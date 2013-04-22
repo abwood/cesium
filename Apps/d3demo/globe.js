@@ -28,11 +28,8 @@ require([
             var widePolyline = polylineCollection.add();
             widePolyline.setPositions(ellipsoid.cartographicArrayToCartesianArray([
                 Cesium.Cartographic.fromDegrees(nation.lon, nation.lat, 0.0),
-                // TODO: use d3.scale to scale the height of the line based on a data parameter
-                Cesium.Cartographic.fromDegrees(nation.lon, nation.lat, 1000000.0)
+                Cesium.Cartographic.fromDegrees(nation.lon, nation.lat, 100.0)
             ]));
-            // TODO: use d3.scale to scale the width of the line based on a data parameter
-            widePolyline.setWidth(10.0);
 
             var outlineMaterial = Cesium.Material.fromType(undefined, Cesium.Material.PolylineOutlineType);
             outlineMaterial.uniforms.outlineWidth = 1.0;
@@ -79,6 +76,7 @@ require([
 
     widget.placeAt('cesiumContainer');
     widget.startup();
+    widget.fullscreen.viewModel.fullscreenElement(document.body);
 
     var providerViewModels = widget.baseLayerPicker.viewModel.imageryProviderViewModels;
     widget.baseLayerPicker.viewModel.selectedItem(providerViewModels()[8]);
