@@ -62,9 +62,9 @@
     // Add the year label; the value is set on transition.
     var label = svg.append("text")
         .attr("class", "year label")
-        .attr("text-anchor", "end")
-        .attr("y", height - 24)
-        .attr("x", width)
+        .attr("text-anchor", "start")
+        .attr("y", 28)
+        .attr("x", 30)
         .text(1800);
 
     // Load the data.
