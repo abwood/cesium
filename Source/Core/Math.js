@@ -161,6 +161,13 @@ define([
     CesiumMath.GRAVITATIONALPARAMETER = 3.986004418e14;
 
     /**
+     * Radius of the sun in meters: 6.995e8
+     * @constant
+     * @type Number
+     */
+    CesiumMath.SOLAR_RADIUS = 6.995e8;
+
+    /**
      * Returns the sign of the value; 1 if the value is positive, -1 if the value is
      * negative, or 0 if the value is 0.
      *
@@ -397,7 +404,7 @@ define([
     };
 
     /**
-     * Alters the value of input x such that <code>-CesiumMath.PI</code> <= x <= <code>CesiumMath.PI</code>
+     * Produces an angle in the range 0 <= angle <= 2Pi which is equivalent to the provided angle.
      * @param {Number} angle in radians
      * @return {Number} The angle in the range ()<code>-CesiumMath.PI</code>, <code>CesiumMath.PI</code>).
      */
@@ -418,10 +425,22 @@ define([
     };
 
     /**
+     * Produces an angle in the range -Pi <= angle <= Pi which is equivalent to the provided angle.
+     * @param {Number} angle in radians
+     * @return {Number} The angle in the range (0 , <code>CesiumMath.TWO_PI</code>).
+     */
+    CesiumMath.zeroToTwoPi = function(x) {
+        var value = x % CesiumMath.TWO_PI;
+        // We do a second modules here if we add 2Pi to ensure that we don't have any numerical issues with very
+        // small negative values.
+        return (value < 0.0) ? (value + CesiumMath.TWO_PI) % CesiumMath.TWO_PI : value;
+    };
+
+    /**
      * DOC_TBA
      */
     CesiumMath.equalsEpsilon = function(left, right, epsilon) {
-        epsilon = epsilon || 0.0;
+        epsilon = defaultValue(epsilon, 0.0);
         return Math.abs(left - right) <= epsilon;
     };
 
@@ -510,7 +529,7 @@ define([
             throw new DeveloperError('A number greater than or equal to 0 is required.');
         }
 
-        var m = n | 0;
+        var m = defaultValue(n, 0);
         return (m !== 0) && ((m & (m - 1)) === 0);
     };
 

@@ -1,20 +1,28 @@
 /*global define*/
 define([
+        './clone',
         './defaultValue',
         './DeveloperError',
         './Math',
         './Ellipsoid',
         './Extent',
         './Cartesian3',
+        './Cartographic',
+        './Matrix2',
+        './GeographicProjection',
         './ComponentDatatype',
         './PrimitiveType'
     ], function(
+        clone,
         defaultValue,
         DeveloperError,
         CesiumMath,
         Ellipsoid,
         Extent,
         Cartesian3,
+        Cartographic,
+        Matrix2,
+        GeographicProjection,
         ComponentDatatype,
         PrimitiveType) {
     "use strict";
@@ -31,16 +39,24 @@ define([
      */
     var ExtentTessellator = {};
 
+    function isValidLatLon(latitude, longitude) {
+        if (latitude < -CesiumMath.PI_OVER_TWO || latitude > CesiumMath.PI_OVER_TWO) {
+            return false;
+        }
+        if (longitude > CesiumMath.PI || longitude < -CesiumMath.PI) {
+            return false;
+        }
+        return true;
+    }
     /**
      * Compute vertices from a cartographic extent.  This function is different from
      * {@link ExtentTessellator#compute} and {@link ExtentTessellator#computeBuffers}
      * in that it assumes that you have already allocated output arrays of the correct size.
      *
      * @param {Extent} description.extent A cartographic extent with north, south, east and west properties in radians.
+     * @param {Number} description.rotation The rotation of the extent in radians.
      * @param {Number} description.width The number of vertices in the longitude direction.
      * @param {Number} description.height The number of vertices in the latitude direction.
-     * @param {Number} description.granularityX The distance, in radians, between each longitude.
-     * @param {Number} description.granularityY The distance, in radians, between each latitude.
      * @param {Number} description.surfaceHeight The height from the surface of the ellipsoid.
      * @param {Boolean} description.generateTextureCoordinates Whether to generate texture coordinates.
      * @param {Boolean} description.interleaveTextureCoordinates Whether to interleave the texture coordinates into the vertex array.
@@ -50,10 +66,17 @@ define([
      * @param {Array|Float32Array} description.textureCoordinates The array to use to store computed texture coordinates, unless interleaved.
      * @param {Array|Float32Array} [description.indices] The array to use to store computed indices.  If undefined, indices will be not computed.
      */
+    var nw = new Cartesian3();
+    var nwCartographic = new Cartographic();
+    var centerCartographic = new Cartographic();
+    var center = new Cartesian3();
+    var rotationMatrix = new Matrix2();
+    var proj = new GeographicProjection();
     ExtentTessellator.computeVertices = function(description) {
-        description = defaultValue(description, {});
-
+        description = defaultValue(description, defaultValue.EMPTY_OBJECT);
         var extent = description.extent;
+        extent.validate();
+        var rotation = description.rotation;
         var surfaceHeight = description.surfaceHeight;
         var width = description.width;
         var height = description.height;
@@ -84,18 +107,51 @@ define([
         var vertexArrayIndex = 0;
         var textureCoordinatesIndex = 0;
 
+        extent.getNorthwest(nwCartographic);
+        extent.getCenter(centerCartographic);
+        var latitude, longitude;
+
+        if (typeof rotation === 'undefined') {
+            rotation = 0;
+        }
+
+        var granYCos = granularityY * cos(rotation);
+        var granYSin = granularityY * sin(rotation);
+        var granXCos = granularityX * cos(rotation);
+        var granXSin = granularityX * sin(rotation);
+
+        if (rotation !== 0) {
+            proj.project(nwCartographic, nw);
+            proj.project(centerCartographic, center);
+            nw.subtract(center, nw);
+            Matrix2.fromRotation(rotation, rotationMatrix);
+            rotationMatrix.multiplyByVector(nw, nw);
+            nw.add(center, nw);
+            proj.unproject(nw, nwCartographic);
+            latitude = nwCartographic.latitude;
+            longitude = nwCartographic.longitude;
+            if (!isValidLatLon(latitude, longitude)) { //NW corner
+                return;
+            }
+            if (!isValidLatLon(latitude + (width-1)*granXSin, longitude + (width-1)*granXCos)) { //NE corner
+                return;
+            }
+            if (!isValidLatLon(latitude - granYCos*(height-1), longitude + (height-1)*granYSin)) { //SW corner
+                return;
+            }
+            if (!isValidLatLon(latitude - granYCos*(height-1) + (width-1)*granXSin, longitude + (height-1)*granYSin + (width-1)*granXCos)) { //SE corner
+                return;
+            }
+        }
+
         for ( var row = 0; row < height; ++row) {
-            var latitude = extent.north - granularityY * row;
-            var cosLatitude = cos(latitude);
-            var nZ = sin(latitude);
-            var kZ = radiiSquaredZ * nZ;
-
-            var geographicV = (latitude - extent.south) * latScalar;
-
-            var v = geographicV;
-
             for ( var col = 0; col < width; ++col) {
-                var longitude = extent.west + granularityX * col;
+                latitude = nwCartographic.latitude - granYCos*row + col*granXSin;
+                var cosLatitude = cos(latitude);
+                var nZ = sin(latitude);
+                var kZ = radiiSquaredZ * nZ;
+
+                longitude = nwCartographic.longitude + row*granYSin + col*granXCos;
 
                 var nX = cosLatitude * cos(longitude);
                 var nY = cosLatitude * sin(longitude);
@@ -114,9 +170,8 @@ define([
                 vertices[vertexArrayIndex++] = rSurfaceZ + nZ * surfaceHeight - relativeToCenter.z;
 
                 if (generateTextureCoordinates) {
-                    var geographicU = (longitude - extent.west) * lonScalar;
-
-                    var u = geographicU;
+                    var u = (longitude - extent.west) * lonScalar;
+                    var v = (latitude - extent.south) * latScalar;
 
                     if (interleaveTextureCoordinates) {
                         vertices[vertexArrayIndex++] = u;
@@ -173,7 +228,7 @@ define([
      * @exception {DeveloperError} <code>description.context</code> is required.
      *
      * @return {Object} A mesh containing attributes for positions, possibly texture coordinates and indices
-     * from the extent for creating a vertex array.
+     * from the extent for creating a vertex array. (returns undefined if no indices are found)
      *
      * @see Context#createVertexArrayFromMesh
      * @see MeshFilters.createAttributeIndices
@@ -200,32 +255,39 @@ define([
      * });
      */
     ExtentTessellator.compute = function(description) {
-        description = defaultValue(description, {});
+        description = defaultValue(description, defaultValue.EMPTY_OBJECT);
+
+        // make a copy of description to allow us to change values before passing to computeVertices
+        var computeVerticesDescription = clone(description);
 
         var extent = description.extent;
         extent.validate();
 
         var ellipsoid = defaultValue(description.ellipsoid, Ellipsoid.WGS84);
-        description.radiiSquared = ellipsoid.getRadiiSquared();
-        description.relativeToCenter = defaultValue(description.relativeToCenter, Cartesian3.ZERO);
+        computeVerticesDescription.radiiSquared = ellipsoid.getRadiiSquared();
+        computeVerticesDescription.relativeToCenter = defaultValue(description.relativeToCenter, Cartesian3.ZERO);
 
         var granularity = defaultValue(description.granularity, 0.1);
-        description.surfaceHeight = defaultValue(description.surfaceHeight, 0.0);
+        computeVerticesDescription.surfaceHeight = defaultValue(description.surfaceHeight, 0.0);
 
-        description.width = Math.ceil((extent.east - extent.west) / granularity) + 1;
-        description.height = Math.ceil((extent.north - extent.south) / granularity) + 1;
+        computeVerticesDescription.width = Math.ceil((extent.east - extent.west) / granularity) + 1;
+        computeVerticesDescription.height = Math.ceil((extent.north - extent.south) / granularity) + 1;
 
         var vertices = [];
         var indices = [];
         var textureCoordinates = [];
 
-        description.generateTextureCoordinates = defaultValue(description.generateTextureCoordinates, false);
-        description.interleaveTextureCoordinates = false;
-        description.vertices = vertices;
-        description.textureCoordinates = textureCoordinates;
-        description.indices = indices;
+        computeVerticesDescription.generateTextureCoordinates = defaultValue(computeVerticesDescription.generateTextureCoordinates, false);
+        computeVerticesDescription.interleaveTextureCoordinates = false;
+        computeVerticesDescription.vertices = vertices;
+        computeVerticesDescription.textureCoordinates = textureCoordinates;
+        computeVerticesDescription.indices = indices;
 
-        ExtentTessellator.computeVertices(description);
+        ExtentTessellator.computeVertices(computeVerticesDescription);
+
+        if (indices.length === 0) {
+            return undefined;
+        }
 
         var mesh = {
             attributes : {},
@@ -338,32 +400,35 @@ define([
      * var vacontext.createVertexArray(attributes, indexBuffer);
      */
     ExtentTessellator.computeBuffers = function(description) {
-        description = defaultValue(description, {});
+        description = defaultValue(description, defaultValue.EMPTY_OBJECT);
+
+        // make a copy of description to allow us to change values before passing to computeVertices
+        var computeVerticesDescription = clone(description);
 
         var extent = description.extent;
         extent.validate();
 
         var ellipsoid = defaultValue(description.ellipsoid, Ellipsoid.WGS84);
-        description.radiiSquared = ellipsoid.getRadiiSquared();
-        description.relativeToCenter = defaultValue(description.relativeToCenter, Cartesian3.ZERO);
+        computeVerticesDescription.radiiSquared = ellipsoid.getRadiiSquared();
+        computeVerticesDescription.relativeToCenter = defaultValue(description.relativeToCenter, Cartesian3.ZERO);
 
         var granularity = defaultValue(description.granularity, 0.1);
-        description.surfaceHeight = defaultValue(description.surfaceHeight, 0.0);
+        computeVerticesDescription.surfaceHeight = defaultValue(description.surfaceHeight, 0.0);
 
-        description.width = Math.ceil((extent.east - extent.west) / granularity) + 1;
-        description.height = Math.ceil((extent.north - extent.south) / granularity) + 1;
+        computeVerticesDescription.width = Math.ceil((extent.east - extent.west) / granularity) + 1;
+        computeVerticesDescription.height = Math.ceil((extent.north - extent.south) / granularity) + 1;
 
         var vertices = [];
         var indices = [];
         var textureCoordinates = [];
 
-        description.generateTextureCoordinates = defaultValue(description.generateTextureCoordinates, false);
-        description.interleaveTextureCoordinates = defaultValue(description.interleaveTextureCoordinates, false);
-        description.vertices = vertices;
-        description.textureCoordinates = textureCoordinates;
-        description.indices = indices;
+        computeVerticesDescription.generateTextureCoordinates = defaultValue(description.generateTextureCoordinates, false);
+        computeVerticesDescription.interleaveTextureCoordinates = defaultValue(description.interleaveTextureCoordinates, false);
+        computeVerticesDescription.vertices = vertices;
+        computeVerticesDescription.textureCoordinates = textureCoordinates;
+        computeVerticesDescription.indices = indices;
 
-        ExtentTessellator.computeVertices(description);
+        ExtentTessellator.computeVertices(computeVerticesDescription);
 
         var result = {
             indices : indices
