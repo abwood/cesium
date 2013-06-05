@@ -451,7 +451,11 @@ define([
         }
 
         var pass = frameState.passes;
-        var useDepthTest = (frameState.morphTime !== 0.0);
+        // ABW: Forcing Depth to always be on for polylines
+        // Not for master Cesium branch.  Instead wait for Cozzi's
+        // primitive framework, where a RenderState can be specified for a
+        // generic primitive object
+        var useDepthTest = true; //(frameState.morphTime !== 0.0);
         var commandLists = this._commandLists;
         commandLists.colorList = emptyArray;
         commandLists.pickList = emptyArray;
@@ -459,7 +463,7 @@ define([
         if ((typeof this._rs === 'undefined') || (this._rs.depthTest.enabled !== useDepthTest)) {
             this._rs = context.createRenderState({
                 blending : BlendingState.ALPHA_BLEND,
-                depthMask : !useDepthTest,
+                depthMask : useDepthTest,
                 depthTest : {
                     enabled : useDepthTest
                 }
