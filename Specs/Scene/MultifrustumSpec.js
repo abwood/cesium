@@ -4,14 +4,14 @@ defineSuite([
          'Specs/destroyScene',
          'Core/destroyObject',
          'Core/BoundingSphere',
-         'Core/BoxTessellator',
+         'Core/BoxGeometry',
          'Core/Cartesian2',
          'Core/Cartesian3',
          'Core/Color',
          'Core/defaultValue',
          'Core/Math',
          'Core/Matrix4',
-         'Core/MeshFilters',
+         'Core/GeometryPipeline',
          'Core/PrimitiveType',
          'Renderer/BlendingState',
          'Renderer/BufferUsage',
@@ -25,14 +25,14 @@ defineSuite([
          destroyScene,
          destroyObject,
          BoundingSphere,
-         BoxTessellator,
+         BoxGeometry,
          Cartesian2,
          Cartesian3,
          Color,
          defaultValue,
          CesiumMath,
          Matrix4,
-         MeshFilters,
+         GeometryPipeline,
          PrimitiveType,
          BlendingState,
          BufferUsage,
@@ -93,7 +93,11 @@ defineSuite([
     var billboard2;
 
     function createBillboards() {
-        var atlas = context.createTextureAtlas({images : [greenImage, blueImage, whiteImage], borderWidthInPixels : 1, initialSize : new Cartesian2(3, 3)});
+        var atlas = context.createTextureAtlas({
+            images : [greenImage, blueImage, whiteImage],
+            borderWidthInPixels : 1,
+            initialSize : new Cartesian2(3, 3)
+        });
 
         // ANGLE Workaround
         atlas.getTexture().setSampler(context.createSampler({
@@ -133,11 +137,19 @@ defineSuite([
 
         scene.initializeFrame();
         scene.render();
-        expect(context.readPixels()).toEqual([0, 255, 0, 255]);
+        var pixels = context.readPixels();
+        expect(pixels[0]).toEqual(0);
+        expect(pixels[1]).not.toEqual(0);
+        expect(pixels[2]).toEqual(0);
+        expect(pixels[3]).toEqual(255);
 
         scene.initializeFrame();
         scene.render();
-        expect(context.readPixels()).toEqual([0, 255, 0, 255]);
+        pixels = context.readPixels();
+        expect(pixels[0]).toEqual(0);
+        expect(pixels[1]).not.toEqual(0);
+        expect(pixels[2]).toEqual(0);
+        expect(pixels[3]).toEqual(255);
     });
 
     it('renders primitive in middle frustum', function() {
@@ -210,13 +222,13 @@ defineSuite([
                 var dimensions = new Cartesian3(500000.0, 500000.0, 500000.0);
                 var maximumCorner = dimensions.multiplyByScalar(0.5);
                 var minimumCorner = maximumCorner.negate();
-                var mesh = BoxTessellator.compute({
+                var geometry = new BoxGeometry({
                     minimumCorner: minimumCorner,
                     maximumCorner: maximumCorner
                 });
-                var attributeIndices = MeshFilters.createAttributeIndices(mesh);
-                this._va = context.createVertexArrayFromMesh({
-                    mesh: mesh,
+                var attributeIndices = GeometryPipeline.createAttributeIndices(geometry);
+                this._va = context.createVertexArrayFromGeometry({
+                    geometry: geometry,
                     attributeIndices: attributeIndices,
                     bufferUsage: BufferUsage.STATIC_DRAW
                 });
@@ -277,13 +289,19 @@ defineSuite([
 
         scene.initializeFrame();
         scene.render();
-        // Epsilon of 1 because AMD and Intel HD 4000 gives 128
-        expect(context.readPixels()).toEqualEpsilon([127, 127, 0, 255], 1);
+        var pixels = context.readPixels();
+        expect(pixels[0]).not.toEqual(0);
+        expect(pixels[1]).not.toEqual(0);
+        expect(pixels[2]).toEqual(0);
+        expect(pixels[3]).toEqual(255);
 
         scene.initializeFrame();
         scene.render();
-        // Epsilon of 1 because AMD and Intel HD 4000 gives 128
-        expect(context.readPixels()).toEqualEpsilon([127, 127, 0, 255], 1);
+        pixels = context.readPixels();
+        expect(pixels[0]).not.toEqual(0);
+        expect(pixels[1]).not.toEqual(0);
+        expect(pixels[2]).toEqual(0);
+        expect(pixels[3]).toEqual(255);
     });
 
     it('render without a central body or any primitives', function() {

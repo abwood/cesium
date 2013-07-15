@@ -1,9 +1,9 @@
 /*global define*/
 define([
         '../Core/defaultValue',
-        '../Core/CubeMapEllipsoidTessellator',
+        '../Core/EllipsoidGeometry',
         '../Core/destroyObject',
-        '../Core/MeshFilters',
+        '../Core/GeometryPipeline',
         '../Core/PrimitiveType',
         '../Core/Ellipsoid',
         '../Renderer/BufferUsage',
@@ -15,9 +15,9 @@ define([
         '../Shaders/SkyAtmosphereFS'
     ], function(
         defaultValue,
-        CubeMapEllipsoidTessellator,
+        EllipsoidGeometry,
         destroyObject,
-        MeshFilters,
+        GeometryPipeline,
         PrimitiveType,
         Ellipsoid,
         BufferUsage,
@@ -52,11 +52,9 @@ define([
 
         /**
          * Determines if the atmosphere is shown.
-         * <p>
-         * The default is <code>true</code>.
-         * </p>
          *
-         * @type Boolean
+         * @type {Boolean}
+         * @default true
          */
         this.show = true;
 
@@ -133,10 +131,13 @@ define([
         var command = this._command;
 
         if (typeof command.vertexArray === 'undefined') {
-            var mesh = CubeMapEllipsoidTessellator.compute(Ellipsoid.fromCartesian3(this._ellipsoid.getRadii().multiplyByScalar(1.025)), 60);
-            command.vertexArray = context.createVertexArrayFromMesh({
-                mesh : mesh,
-                attributeIndices : MeshFilters.createAttributeIndices(mesh),
+            var geometry = new EllipsoidGeometry({
+                radii : this._ellipsoid.getRadii().multiplyByScalar(1.025),
+                numberOfPartitions : 60
+            });
+            command.vertexArray = context.createVertexArrayFromGeometry({
+                geometry : geometry,
+                attributeIndices : GeometryPipeline.createAttributeIndices(geometry),
                 bufferUsage : BufferUsage.STATIC_DRAW
             });
             command.primitiveType = PrimitiveType.TRIANGLES;
