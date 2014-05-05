@@ -1,284 +1,240 @@
 /*global define*/
-define([
-        '../Core/TimeInterval',
-        '../Core/defaultValue',
-        './CzmlBoolean',
-        './CzmlCartesian2',
-        './CzmlCartesian3',
-        './CzmlNumber',
-        './CzmlImage',
-        './CzmlHorizontalOrigin',
-        './CzmlVerticalOrigin',
-        './CzmlColor',
-        './DynamicProperty'
+define(['../Core/defaultValue',
+        '../Core/defined',
+        '../Core/defineProperties',
+        '../Core/DeveloperError',
+        '../Core/Event',
+        './createDynamicPropertyDescriptor'
     ], function(
-        TimeInterval,
         defaultValue,
-        CzmlBoolean,
-        CzmlCartesian2,
-        CzmlCartesian3,
-        CzmlNumber,
-        CzmlImage,
-        CzmlHorizontalOrigin,
-        CzmlVerticalOrigin,
-        CzmlColor,
-        DynamicProperty) {
+        defined,
+        defineProperties,
+        DeveloperError,
+        Event,
+        createDynamicPropertyDescriptor) {
     "use strict";
 
     /**
-     * Represents a time-dynamic billboard, typically used in conjunction with DynamicBillboardVisualizer and
-     * DynamicObjectCollection to visualize CZML.
+     * An optionally time-dynamic billboard.
      *
      * @alias DynamicBillboard
      * @constructor
-     *
-     * @see DynamicObject
-     * @see DynamicProperty
-     * @see DynamicObjectCollection
-     * @see DynamicBillboardVisualizer
-     * @see VisualizerCollection
-     * @see Billboard
-     * @see BillboardCollection
-     * @see CzmlDefaults
      */
     var DynamicBillboard = function() {
+        this._image = undefined;
+        this._imageSubscription = undefined;
+        this._width = undefined;
+        this._widthSubscription = undefined;
+        this._height = undefined;
+        this._heightSubscription = undefined;
+        this._scale = undefined;
+        this._scaleSubscription = undefined;
+        this._rotation = undefined;
+        this._rotationSubscription = undefined;
+        this._alignedAxis = undefined;
+        this._alignedAxisSubscription = undefined;
+        this._horizontalOrigin = undefined;
+        this._horizontalOriginSubscription = undefined;
+        this._verticalOrigin = undefined;
+        this._verticalOriginSubscription = undefined;
+        this._color = undefined;
+        this._colorSubscription = undefined;
+        this._eyeOffset = undefined;
+        this._eyeOffsetSubscription = undefined;
+        this._pixelOffset = undefined;
+        this._pixelOffsetSubscription = undefined;
+        this._show = undefined;
+        this._showSubscription = undefined;
+        this._scaleByDistance = undefined;
+        this._scaleByDistanceSubscription = undefined;
+        this._translucencyByDistance = undefined;
+        this._translucencyByDistanceSubscription = undefined;
+        this._pixelOffsetScaleByDistance = undefined;
+        this._pixelOffsetScaleByDistanceSubscription = undefined;
+        this._definitionChanged = new Event();
+    };
+
+    defineProperties(DynamicBillboard.prototype, {
         /**
-         * A DynamicProperty of type CzmlImage which determines the billboard's texture.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets the event that is raised whenever a new property is assigned.
+         * @memberof DynamicBillboard.prototype
+         * @type {Event}
          */
-        this.image = undefined;
+        definitionChanged : {
+            get : function() {
+                return this._definitionChanged;
+            }
+        },
+
         /**
-         * A DynamicProperty of type CzmlNumber which determines the billboard's scale.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the string {@link Property} specifying the URL of the billboard's texture.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
          */
-        this.scale = undefined;
+        image : createDynamicPropertyDescriptor('image'),
+
         /**
-         * A DynamicProperty of type CzmlNumber which determines the billboard's rotation.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the numeric {@link Property} specifying the billboard's scale.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
          */
-        this.rotation = undefined;
+        scale : createDynamicPropertyDescriptor('scale'),
+
         /**
-         * A DynamicProperty of type CzmlCartesian3 which determines the billboard's aligned axis.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the numeric {@link Property} specifying the billboard's rotation.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
          */
-        this.alignedAxis = undefined;
+        rotation : createDynamicPropertyDescriptor('rotation'),
+
         /**
-         * A DynamicProperty of type CzmlHorizontalOrigin which determines the billboard's horizontal origin.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the {@link Cartesian3} {@link Property} specifying the billboard rotation's aligned axis.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
          */
-        this.horizontalOrigin = undefined;
+        alignedAxis : createDynamicPropertyDescriptor('alignedAxis'),
+
         /**
-         * A DynamicProperty of type CzmlVerticalHorigin which determines the billboard's vertical origin.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the {@link HorizontalOrigin} {@link Property} specifying the billboard's horizontal origin.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
          */
-        this.verticalOrigin = undefined;
+        horizontalOrigin : createDynamicPropertyDescriptor('horizontalOrigin'),
+
         /**
-         * A DynamicProperty of type CzmlColor which determines the billboard's color.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the {@link VerticalOrigin} {@link Property} specifying the billboard's vertical origin.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
          */
-        this.color = undefined;
+        verticalOrigin : createDynamicPropertyDescriptor('verticalOrigin'),
+
         /**
-         * A DynamicProperty of type CzmlCartesian3 which determines the billboard's eye offset.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the {@link Color} {@link Property} specifying the billboard's color.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
          */
-        this.eyeOffset = undefined;
+        color : createDynamicPropertyDescriptor('color'),
+
         /**
-         * A DynamicProperty of type CzmlCartesian2 which determines the billboard's pixel offset.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the {@link Cartesian3} {@link Property} specifying the billboard's eye offset.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
          */
-        this.pixelOffset = undefined;
+        eyeOffset : createDynamicPropertyDescriptor('eyeOffset'),
+
         /**
-         * A DynamicProperty of type CzmlBoolean which determines the billboard's visibility.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the {@link Cartesian2} {@link Property} specifying the billboard's pixel offset.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
          */
-        this.show = undefined;
+        pixelOffset : createDynamicPropertyDescriptor('pixelOffset'),
+
+        /**
+         * Gets or sets the boolean {@link Property} specifying the billboard's visibility.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
+         */
+        show : createDynamicPropertyDescriptor('show'),
+
+        /**
+         * Gets or sets the numeric {@link Property} specifying the billboard's width in pixels.
+         * If undefined, the native width is used.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
+         */
+        width : createDynamicPropertyDescriptor('width'),
+
+        /**
+         * Gets or sets the numeric {@link Property} specifying the billboard's height in pixels.
+         * If undefined, the native height is used.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
+         */
+        height : createDynamicPropertyDescriptor('height'),
+
+        /**
+         * Gets or sets the {@link NearFarScalar} {@link Property} used to scale billboards based on distance.
+         * If undefined, a constant size is used.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
+         */
+        scaleByDistance : createDynamicPropertyDescriptor('scaleByDistance'),
+
+        /**
+         * Gets or sets the {@link NearFarScalar} {@link Property} used to set translucency based on distance.
+         * If undefined, a constant size is used.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
+         */
+        translucencyByDistance : createDynamicPropertyDescriptor('translucencyByDistance'),
+
+        /**
+         * Gets or sets the {@link NearFarScalar} {@link Property} used to set pixel offset scaling based on distance.
+         * If undefined, no additional scale is applied to the pixel offset
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
+         */
+        pixelOffsetScaleByDistance : createDynamicPropertyDescriptor('pixelOffsetScaleByDistance')
+    });
+
+    /**
+     * Duplicates a DynamicBillboard instance.
+     * @memberof DynamicBillboard
+     *
+     * @param {DynamicBillboard} [result] The object onto which to store the result.
+     * @returns {DynamicBillboard} The modified result parameter or a new instance if one was not provided.
+     */
+    DynamicBillboard.prototype.clone = function(result) {
+        if (!defined(result)) {
+            result = new DynamicBillboard();
+        }
+        result.color = this._color;
+        result.eyeOffset = this._eyeOffset;
+        result.horizontalOrigin = this._horizontalOrigin;
+        result.image = this._image;
+        result.pixelOffset = this._pixelOffset;
+        result.scale = this._scale;
+        result.rotation = this._rotation;
+        result.alignedAxis = this._alignedAxis;
+        result.show = this._show;
+        result.verticalOrigin = this._verticalOrigin;
+        result.width = this._width;
+        result.height = this._height;
+        result.scaleByDistance = this._scaleByDistance;
+        result.translucencyByDistance = this._translucencyByDistance;
+        result.pixelOffsetScaleByDistance = this._pixelOffsetScaleByDistance;
+        return result;
     };
 
     /**
-     * Processes a single CZML packet and merges its data into the provided DynamicObject's billboard.
-     * If the DynamicObject does not have a billboard, one is created.  This method is not
-     * normally called directly, but is part of the array of CZML processing functions that is
-     * passed into the DynamicObjectCollection constructor.
+     * Assigns each unassigned property on this object to the value
+     * of the same property on the provided source object.
      * @memberof DynamicBillboard
      *
-     * @param {DynamicObject} dynamicObject The DynamicObject which will contain the billboard data.
-     * @param {Object} packet The CZML packet to process.
-     * @param {DynamicObjectCollection} [dynamicObjectCollection] The collection into which objects are being loaded.
-     * @param {String} [sourceUri] The originating url of the CZML being processed.
-     * @returns {Boolean} true if any new properties were created while processing the packet, false otherwise.
-     *
-     * @see DynamicObject
-     * @see DynamicProperty
-     * @see DynamicObjectCollection
-     * @see CzmlDefaults#updaters
+     * @param {DynamicBillboard} source The object to be merged into this object.
      */
-    DynamicBillboard.processCzmlPacket = function(dynamicObject, packet, dynamicObjectCollection, sourceUri) {
-        var billboardData = packet.billboard;
-        if (typeof billboardData === 'undefined') {
-            return false;
+    DynamicBillboard.prototype.merge = function(source) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(source)) {
+            throw new DeveloperError('source is required.');
         }
+        //>>includeEnd('debug');
 
-        var billboardUpdated = false;
-        var billboard = dynamicObject.billboard;
-        billboardUpdated = typeof billboard === 'undefined';
-        if (billboardUpdated) {
-            dynamicObject.billboard = billboard = new DynamicBillboard();
-        }
-
-        var interval = billboardData.interval;
-        if (typeof interval !== 'undefined') {
-            interval = TimeInterval.fromIso8601(interval);
-        }
-
-        if (typeof billboardData.color !== 'undefined') {
-            var color = billboard.color;
-            if (typeof color === 'undefined') {
-                billboard.color = color = new DynamicProperty(CzmlColor);
-                billboardUpdated = true;
-            }
-            color.processCzmlIntervals(billboardData.color, interval);
-        }
-
-        if (typeof billboardData.eyeOffset !== 'undefined') {
-            var eyeOffset = billboard.eyeOffset;
-            if (typeof eyeOffset === 'undefined') {
-                billboard.eyeOffset = eyeOffset = new DynamicProperty(CzmlCartesian3);
-                billboardUpdated = true;
-            }
-            eyeOffset.processCzmlIntervals(billboardData.eyeOffset, interval);
-        }
-
-        if (typeof billboardData.horizontalOrigin !== 'undefined') {
-            var horizontalOrigin = billboard.horizontalOrigin;
-            if (typeof horizontalOrigin === 'undefined') {
-                billboard.horizontalOrigin = horizontalOrigin = new DynamicProperty(CzmlHorizontalOrigin);
-                billboardUpdated = true;
-            }
-            horizontalOrigin.processCzmlIntervals(billboardData.horizontalOrigin, interval);
-        }
-
-        if (typeof billboardData.image !== 'undefined') {
-            var image = billboard.image;
-            if (typeof image === 'undefined') {
-                billboard.image = image = new DynamicProperty(CzmlImage);
-                billboardUpdated = true;
-            }
-            image.processCzmlIntervals(billboardData.image, interval, sourceUri);
-        }
-
-        if (typeof billboardData.pixelOffset !== 'undefined') {
-            var pixelOffset = billboard.pixelOffset;
-            if (typeof pixelOffset === 'undefined') {
-                billboard.pixelOffset = pixelOffset = new DynamicProperty(CzmlCartesian2);
-                billboardUpdated = true;
-            }
-            pixelOffset.processCzmlIntervals(billboardData.pixelOffset, interval);
-        }
-
-        if (typeof billboardData.scale !== 'undefined') {
-            var scale = billboard.scale;
-            if (typeof scale === 'undefined') {
-                billboard.scale = scale = new DynamicProperty(CzmlNumber);
-                billboardUpdated = true;
-            }
-            scale.processCzmlIntervals(billboardData.scale, interval);
-        }
-
-        if (typeof billboardData.rotation !== 'undefined') {
-            var rotation = billboard.rotation;
-            if (typeof rotation === 'undefined') {
-                billboard.rotation = rotation = new DynamicProperty(CzmlNumber);
-                billboardUpdated = true;
-            }
-            rotation.processCzmlIntervals(billboardData.rotation, interval);
-        }
-
-        if (typeof billboardData.alignedAxis !== 'undefined') {
-            var alignedAxis = billboard.alignedAxis;
-            if (typeof alignedAxis === 'undefined') {
-                billboard.alignedAxis = alignedAxis = new DynamicProperty(CzmlCartesian3);
-                billboardUpdated = true;
-            }
-            alignedAxis.processCzmlIntervals(billboardData.alignedAxis, interval);
-        }
-
-        if (typeof billboardData.show !== 'undefined') {
-            var show = billboard.show;
-            if (typeof show === 'undefined') {
-                billboard.show = show = new DynamicProperty(CzmlBoolean);
-                billboardUpdated = true;
-            }
-            show.processCzmlIntervals(billboardData.show, interval);
-        }
-
-        if (typeof billboardData.verticalOrigin !== 'undefined') {
-            var verticalOrigin = billboard.verticalOrigin;
-            if (typeof verticalOrigin === 'undefined') {
-                billboard.verticalOrigin = verticalOrigin = new DynamicProperty(CzmlVerticalOrigin);
-                billboardUpdated = true;
-            }
-            verticalOrigin.processCzmlIntervals(billboardData.verticalOrigin, interval);
-        }
-
-        return billboardUpdated;
-    };
-
-    /**
-     * Given two DynamicObjects, takes the billboard properties from the second
-     * and assigns them to the first, assuming such a property did not already exist.
-     * This method is not normally called directly, but is part of the array of CZML processing
-     * functions that is passed into the CompositeDynamicObjectCollection constructor.
-     * @memberof DynamicBillboard
-     *
-     * @param {DynamicObject} targetObject The DynamicObject which will have properties merged onto it.
-     * @param {DynamicObject} objectToMerge The DynamicObject containing properties to be merged.
-     *
-     * @see CzmlDefaults
-     */
-    DynamicBillboard.mergeProperties = function(targetObject, objectToMerge) {
-        var billboardToMerge = objectToMerge.billboard;
-        if (typeof billboardToMerge !== 'undefined') {
-
-            var targetBillboard = targetObject.billboard;
-            if (typeof targetBillboard === 'undefined') {
-                targetObject.billboard = targetBillboard = new DynamicBillboard();
-            }
-
-            targetBillboard.color = defaultValue(targetBillboard.color, billboardToMerge.color);
-            targetBillboard.eyeOffset = defaultValue(targetBillboard.eyeOffset, billboardToMerge.eyeOffset);
-            targetBillboard.horizontalOrigin = defaultValue(targetBillboard.horizontalOrigin, billboardToMerge.horizontalOrigin);
-            targetBillboard.image = defaultValue(targetBillboard.image, billboardToMerge.image);
-            targetBillboard.pixelOffset = defaultValue(targetBillboard.pixelOffset, billboardToMerge.pixelOffset);
-            targetBillboard.scale = defaultValue(targetBillboard.scale, billboardToMerge.scale);
-            targetBillboard.rotation = defaultValue(targetBillboard.rotation, billboardToMerge.rotation);
-            targetBillboard.alignedAxis = defaultValue(targetBillboard.alignedAxis, billboardToMerge.alignedAxis);
-            targetBillboard.show = defaultValue(targetBillboard.show, billboardToMerge.show);
-            targetBillboard.verticalOrigin = defaultValue(targetBillboard.verticalOrigin, billboardToMerge.verticalOrigin);
-        }
-    };
-
-    /**
-     * Given a DynamicObject, undefines the billboard associated with it.
-     * This method is not normally called directly, but is part of the array of CZML processing
-     * functions that is passed into the CompositeDynamicObjectCollection constructor.
-     * @memberof DynamicBillboard
-     *
-     * @param {DynamicObject} dynamicObject The DynamicObject to remove the billboard from.
-     *
-     * @see CzmlDefaults
-     */
-    DynamicBillboard.undefineProperties = function(dynamicObject) {
-        dynamicObject.billboard = undefined;
+        this.color = defaultValue(this._color, source._color);
+        this.eyeOffset = defaultValue(this._eyeOffset, source._eyeOffset);
+        this.horizontalOrigin = defaultValue(this._horizontalOrigin, source._horizontalOrigin);
+        this.image = defaultValue(this._image, source._image);
+        this.pixelOffset = defaultValue(this._pixelOffset, source._pixelOffset);
+        this.scale = defaultValue(this._scale, source._scale);
+        this.rotation = defaultValue(this._rotation, source._rotation);
+        this.alignedAxis = defaultValue(this._alignedAxis, source._alignedAxis);
+        this.show = defaultValue(this._show, source._show);
+        this.verticalOrigin = defaultValue(this._verticalOrigin, source._verticalOrigin);
+        this.width = defaultValue(this._width, source._width);
+        this.height = defaultValue(this._height, source._height);
+        this.scaleByDistance = defaultValue(this._scaleByDistance, source._scaleByDistance);
+        this.translucencyByDistance = defaultValue(this._translucencyByDistance, source._translucencyByDistance);
+        this.pixelOffsetScaleByDistance = defaultValue(this._pixelOffsetScaleByDistance, source._pixelOffsetScaleByDistance);
     };
 
     return DynamicBillboard;

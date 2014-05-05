@@ -1,21 +1,24 @@
 /*global define*/
 define([
+        './defined',
         './Fullscreen'
     ], function(
+        defined,
         Fullscreen) {
     "use strict";
 
     function extractVersion(versionString) {
         var parts = versionString.split('.');
-        for ( var i = 0, len = parts.length; i < len; ++i) {
+        for (var i = 0, len = parts.length; i < len; ++i) {
             parts[i] = parseInt(parts[i], 10);
         }
+        return parts;
     }
 
     var isChromeResult;
     var chromeVersionResult;
     function isChrome() {
-        if (typeof isChromeResult === 'undefined') {
+        if (!defined(isChromeResult)) {
             var fields = (/ Chrome\/([\.0-9]+)/).exec(navigator.userAgent);
             if (fields === null) {
                 isChromeResult = false;
@@ -35,7 +38,7 @@ define([
     var isSafariResult;
     var safariVersionResult;
     function isSafari() {
-        if (typeof isSafariResult === 'undefined') {
+        if (!defined(isSafariResult)) {
             // Chrome contains Safari in the user agent too
             if (isChrome() || !(/ Safari\/[\.0-9]+/).test(navigator.userAgent)) {
                 isSafariResult = false;
@@ -60,7 +63,7 @@ define([
     var isWebkitResult;
     var webkitVersionResult;
     function isWebkit() {
-        if (typeof isWebkitResult === 'undefined') {
+        if (!defined(isWebkitResult)) {
             var fields = (/ AppleWebKit\/([\.0-9]+)(\+?)/).exec(navigator.userAgent);
             if (fields === null) {
                 isWebkitResult = false;
@@ -81,13 +84,22 @@ define([
     var isInternetExplorerResult;
     var internetExplorerVersionResult;
     function isInternetExplorer() {
-        if (typeof isInternetExplorerResult === 'undefined') {
-            var fields = (/ MSIE ([\.0-9]+)/).exec(navigator.userAgent);
-            if (fields === null) {
-                isInternetExplorerResult = false;
+        if (!defined(isInternetExplorerResult)) {
+            var fields;
+            if (navigator.appName === 'Microsoft Internet Explorer') {
+                fields = /MSIE ([0-9]{1,}[\.0-9]{0,})/.exec(navigator.userAgent);
+                if (fields !== null) {
+                    isInternetExplorerResult = true;
+                    internetExplorerVersionResult = extractVersion(fields[1]);
+                }
+            } else if (navigator.appName === 'Netscape') {
+                fields = /Trident\/.*rv:([0-9]{1,}[\.0-9]{0,})/.exec(navigator.userAgent);
+                if (fields !== null) {
+                    isInternetExplorerResult = true;
+                    internetExplorerVersionResult = extractVersion(fields[1]);
+                }
             } else {
-                isInternetExplorerResult = true;
-                internetExplorerVersionResult = extractVersion(fields[1]);
+                isInternetExplorerResult = false;
             }
         }
         return isInternetExplorerResult;
@@ -114,41 +126,27 @@ define([
         internetExplorerVersion : internetExplorerVersion
     };
 
-    var supportsCrossOriginImagery;
-
-    /**
-     * Detects whether the current browser supports the use of cross-origin
-     * requests to load streaming imagery.
-     *
-     * @returns true if the browser can load cross-origin streaming imagery, false if not.
-     *
-     * @see <a href='http://www.w3.org/TR/cors/'>Cross-Origin Resource Sharing</a>
-     */
-    FeatureDetection.supportsCrossOriginImagery = function() {
-        if (typeof supportsCrossOriginImagery === 'undefined') {
-            if (isSafari() && webkitVersion()[0] < 536) {
-                // versions of Safari below this incorrectly throw a DOM error when calling
-                // readPixels on a canvas containing a cross-origin image.
-                supportsCrossOriginImagery = false;
-            } else {
-                // any other versions of browsers that incorrectly block
-                // readPixels on canvas containing crossOrigin images?
-                supportsCrossOriginImagery = 'withCredentials' in new XMLHttpRequest();
-            }
-        }
-        return supportsCrossOriginImagery;
-    };
-
     /**
      * Detects whether the current browser supports the full screen standard.
      *
-     * @returns true if the supports the full screen standard, false if not.
+     * @returns true if the browser supports the full screen standard, false if not.
      *
      * @see Fullscreen
      * @see <a href='http://dvcs.w3.org/hg/fullscreen/raw-file/tip/Overview.html'>W3C Fullscreen Living Specification</a>
      */
     FeatureDetection.supportsFullscreen = function() {
         return Fullscreen.supportsFullscreen();
+    };
+
+    /**
+     * Detects whether the current browser supports typed arrays.
+     *
+     * @returns true if the browser supports typed arrays, false if not.
+     *
+     * @see <a href='http://www.khronos.org/registry/typedarray/specs/latest/'>Typed Array Specification</a>
+     */
+    FeatureDetection.supportsTypedArrays = function() {
+        return typeof ArrayBuffer !== 'undefined';
     };
 
     return FeatureDetection;

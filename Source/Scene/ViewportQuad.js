@@ -1,39 +1,25 @@
 /*global define*/
 define([
         '../Core/Color',
-        '../Core/combine',
         '../Core/destroyObject',
-        '../Core/defaultValue',
+        '../Core/defined',
         '../Core/DeveloperError',
         '../Core/BoundingRectangle',
-        '../Core/ComponentDatatype',
-        '../Core/PrimitiveType',
-        '../Core/Geometry',
-        '../Core/GeometryAttribute',
         './Material',
-        '../Renderer/BufferUsage',
         '../Renderer/BlendingState',
-        '../Renderer/CommandLists',
-        '../Renderer/DrawCommand',
-        '../Shaders/ViewportQuadVS',
+        '../Renderer/createShaderSource',
+        '../Renderer/Pass',
         '../Shaders/ViewportQuadFS'
     ], function(
         Color,
-        combine,
         destroyObject,
-        defaultValue,
+        defined,
         DeveloperError,
         BoundingRectangle,
-        ComponentDatatype,
-        PrimitiveType,
-        Geometry,
-        GeometryAttribute,
         Material,
-        BufferUsage,
         BlendingState,
-        CommandLists,
-        DrawCommand,
-        ViewportQuadVS,
+        createShaderSource,
+        Pass,
         ViewportQuadFS) {
     "use strict";
 
@@ -47,17 +33,10 @@ define([
      * @param {Material} [material] The {@link Material} defining the surface appearance of the viewport quad.
      *
      * @example
-     * var viewportQuad = new ViewportQuad(new BoundingRectangle(0, 0, 80, 40));
-     * viewportQuad.material.uniforms.color = new Color(1.0, 0.0, 0.0, 1.0);
+     * var viewportQuad = new Cesium.ViewportQuad(new Cesium.BoundingRectangle(0, 0, 80, 40));
+     * viewportQuad.material.uniforms.color = new Cesium.Color(1.0, 0.0, 0.0, 1.0);
      */
     var ViewportQuad = function(rectangle, material) {
-
-        this._va = undefined;
-        this._overlayCommand = new DrawCommand();
-        this._overlayCommand.primitiveType = PrimitiveType.TRIANGLE_FAN;
-        this._commandLists = new CommandLists();
-        this._commandLists.overlayList.push(this._overlayCommand);
-
         /**
          * Determines if the viewport quad primitive will be shown.
          *
@@ -66,7 +45,7 @@ define([
          */
         this.show = true;
 
-        if (typeof rectangle === 'undefined') {
+        if (!defined(rectangle)) {
             rectangle = new BoundingRectangle();
         }
 
@@ -76,13 +55,14 @@ define([
          * @type {BoundingRectangle}
          *
          * @example
-         * viewportQuad.rectangle = new BoundingRectangle(0, 0, 80, 40);
+         * viewportQuad.rectangle = new Cesium.BoundingRectangle(0, 0, 80, 40);
          */
         this.rectangle = BoundingRectangle.clone(rectangle);
 
-        if (typeof material === 'undefined') {
-            material = Material.fromType(undefined, Material.ColorType);
-            material.uniforms.color = new Color(1.0, 1.0, 1.0, 1.0);
+        if (!defined(material)) {
+            material = Material.fromType(Material.ColorType, {
+                color : new Color(1.0, 1.0, 1.0, 1.0)
+            });
         }
 
         /**
@@ -96,66 +76,19 @@ define([
          *
          * @example
          * // 1. Change the color of the default material to yellow
-         * viewportQuad.material.uniforms.color = new Color(1.0, 1.0, 0.0, 1.0);
+         * viewportQuad.material.uniforms.color = new Cesium.Color(1.0, 1.0, 0.0, 1.0);
          *
          * // 2. Change material to horizontal stripes
-         * viewportQuad.material = Material.fromType(scene.getContext(), Material.StripeType);
+         * viewportQuad.material = Cesium.Material.fromType(Material.StripeType);
          *
          * @see <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>
          */
         this.material = material;
         this._material = undefined;
+
+        this._overlayCommand = undefined;
+        this._rs = undefined;
     };
-
-    var attributeIndices = {
-        position : 0,
-        textureCoordinates : 1
-    };
-
-    function getVertexArray(context) {
-        // Per-context cache for viewport quads
-        var vertexArray = context.cache.viewportQuad_vertexArray;
-
-        if (typeof vertexArray !== 'undefined') {
-            return vertexArray;
-        }
-
-        var geometry = new Geometry({
-            attributes : {
-                position : new GeometryAttribute({
-                    componentDatatype : ComponentDatatype.FLOAT,
-                    componentsPerAttribute : 2,
-                    values : [
-                       -1.0, -1.0,
-                        1.0, -1.0,
-                        1.0,  1.0,
-                       -1.0,  1.0
-                    ]
-                }),
-
-                textureCoordinates : new GeometryAttribute({
-                    componentDatatype : ComponentDatatype.FLOAT,
-                    componentsPerAttribute : 2,
-                    values : [
-                        0.0, 0.0,
-                        1.0, 0.0,
-                        1.0, 1.0,
-                        0.0, 1.0
-                    ]
-                })
-            },
-            primitiveType : PrimitiveType.TRIANGLES
-        });
-
-        vertexArray = context.createVertexArrayFromGeometry({
-            geometry : geometry,
-            attributeIndices : attributeIndices,
-            bufferUsage : BufferUsage.STATIC_DRAW
-        });
-
-        context.cache.viewportQuad_vertexArray = vertexArray;
-        return vertexArray;
-    }
 
     /**
      * Commits changes to properties before rendering by updating the object's WebGL resources.
@@ -166,50 +99,50 @@ define([
      * @exception {DeveloperError} this.rectangle must be defined.
      */
     ViewportQuad.prototype.update = function(context, frameState, commandList) {
-        if (!this.show)
-        {
+        if (!this.show) {
             return;
         }
 
-        if (typeof this.material === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(this.material)) {
             throw new DeveloperError('this.material must be defined.');
         }
-
-        if (typeof this.rectangle === 'undefined') {
+        if (!defined(this.rectangle)) {
             throw new DeveloperError('this.rectangle must be defined.');
         }
+        //>>includeEnd('debug');
 
-        if (typeof this._va === 'undefined') {
-            this._va = getVertexArray(context);
-            this._overlayCommand.vertexArray = this._va;
-        }
-
-        var rs = this._overlayCommand.renderState;
-        if ((typeof rs === 'undefined') || !BoundingRectangle.equals(rs.viewport, this.rectangle)) {
-            this._overlayCommand.renderState = context.createRenderState({
+        var rs = this._rs;
+        if ((!defined(rs)) || !BoundingRectangle.equals(rs.viewport, this.rectangle)) {
+            this._rs = context.createRenderState({
                 blending : BlendingState.ALPHA_BLEND,
                 viewport : this.rectangle
             });
         }
 
         var pass = frameState.passes;
-        if (pass.overlay) {
-            if (this._material !== this.material) {
+        if (pass.render) {
+            if (this._material !== this.material || !defined(this._overlayCommand)) {
                 // Recompile shader when material changes
                 this._material = this.material;
 
-                var fsSource =
-                    '#line 0\n' +
-                    this._material.shaderSource +
-                    '#line 0\n' +
-                    ViewportQuadFS;
+                if (defined(this._overlayCommand)) {
+                    this._overlayCommand.shaderProgram.release();
+                }
 
-                this._overlayCommand.shaderProgram = context.getShaderCache().replaceShaderProgram(
-                    this._overlayCommand.shaderProgram, ViewportQuadVS, fsSource, attributeIndices);
+                var fsSource = createShaderSource({ sources : [this._material.shaderSource, ViewportQuadFS] });
+                this._overlayCommand = context.createViewportQuadCommand(fsSource, {
+                    renderState : this._rs,
+                    uniformMap : this._material._uniforms,
+                    owner : this
+                });
+                this._overlayCommand.pass = Pass.OVERLAY;
             }
 
+            this._material.update(context);
+
             this._overlayCommand.uniformMap = this._material._uniforms;
-            commandList.push(this._commandLists);
+            commandList.push(this._overlayCommand);
         }
     };
 
@@ -221,7 +154,7 @@ define([
      *
      * @memberof ViewportQuad
      *
-     * @return {Boolean} True if this object was destroyed; otherwise, false.
+     * @returns {Boolean} True if this object was destroyed; otherwise, false.
      *
      * @see ViewportQuad#destroy
      */
@@ -239,7 +172,7 @@ define([
      *
      * @memberof ViewportQuad
      *
-     * @return {undefined}
+     * @returns {undefined}
      *
      * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
      *
@@ -249,8 +182,9 @@ define([
      * quad = quad && quad.destroy();
      */
     ViewportQuad.prototype.destroy = function() {
-        this._overlayCommand.shaderProgram = this._overlayCommand.shaderProgram && this._overlayCommand.shaderProgram.release();
-
+        if (defined(this._overlayCommand)) {
+            this._overlayCommand.shaderProgram = this._overlayCommand.shaderProgram && this._overlayCommand.shaderProgram.release();
+        }
         return destroyObject(this);
     };
 

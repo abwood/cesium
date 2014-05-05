@@ -2,6 +2,7 @@
 define([
         '../../Core/DeveloperError',
         '../../Core/ClockRange',
+        '../../Core/defined',
         '../../Core/destroyObject',
         '../../Core/JulianDate',
         '../getElement',
@@ -10,6 +11,7 @@ define([
     ], function(
         DeveloperError,
         ClockRange,
+        defined,
         destroyObject,
         JulianDate,
         getElement,
@@ -72,13 +74,14 @@ define([
     var timelineMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     function Timeline(container, clock) {
-        if (typeof container === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(container)) {
             throw new DeveloperError('container is required.');
         }
-
-        if (typeof clock === 'undefined') {
+        if (!defined(clock)) {
             throw new DeveloperError('clock is required.');
         }
+        //>>includeEnd('debug');
 
         container = getElement(container);
 
@@ -195,15 +198,20 @@ define([
     Timeline.prototype.addTrack = function(interval, heightInPx, color, backgroundColor) {
         var newTrack = new TimelineTrack(interval, heightInPx, color, backgroundColor);
         this._trackList.push(newTrack);
+        this._lastHeight = undefined;
         this.resize();
         return newTrack;
     };
 
     Timeline.prototype.zoomTo = function(startJulianDate, endJulianDate) {
         this._timeBarSecondsSpan = startJulianDate.getSecondsDifference(endJulianDate);
+
+        //>>includeStart('debug', pragmas.debug);
         if (this._timeBarSecondsSpan <= 0) {
             throw new DeveloperError('Start time must come before end time.');
         }
+        //>>includeEnd('debug');
+
         this._startJulian = startJulianDate;
         this._endJulian = endJulianDate;
 
@@ -287,7 +295,7 @@ define([
 
         this._needleEle.style.left = xPos.toString() + 'px';
 
-        var tics = '<span class="cesium-timeline-icon16" style="left:' + scrubX + 'px;bottom:0;background-position: 0px 0px;"></span>';
+        var tics = '';
 
         var minimumDuration = 0.01;
         var maximumDuration = 31536000000.0; // ~1000 years
@@ -470,8 +478,12 @@ define([
             this._mainTicSpan = -1;
         }
 
+        tics += '<span class="cesium-timeline-icon16" style="left:' + scrubX + 'px;bottom:0;background-position: 0px 0px;"></span>';
         timeBar.innerHTML = tics;
-        this._scrubElement = timeBar.childNodes[0];
+        this._scrubElement = timeBar.lastChild;
+
+        // Clear track canvas.
+        this._context.clearRect(0, 0, this._trackListEle.width, this._trackListEle.height);
 
         renderState.y = 0;
         this._trackList.forEach(function(track) {
@@ -483,7 +495,7 @@ define([
     Timeline.prototype.updateFromClock = function() {
         this._scrubJulian = this._clock.currentTime;
         var scrubElement = this._scrubElement;
-        if (typeof this._scrubElement !== 'undefined') {
+        if (defined(this._scrubElement)) {
             var seconds = this._startJulian.getSecondsDifference(this._scrubJulian);
             var xPos = Math.round(seconds * this._topDiv.clientWidth / this._timeBarSecondsSpan);
 
@@ -494,7 +506,7 @@ define([
                 this._needleEle.style.left = xPos + 'px';
             }
         }
-        if (typeof this._timelineDragLocation !== 'undefined') {
+        if (defined(this._timelineDragLocation)) {
             this._setTimeBarTime(this._timelineDragLocation, this._timelineDragLocation * this._timeBarSecondsSpan / this._topDiv.clientWidth);
             this.zoomTo(this._startJulian.addSeconds(this._timelineDrag), this._endJulian.addSeconds(this._timelineDrag));
         }
@@ -668,7 +680,7 @@ define([
                     newSpan = 0;
                 }
 
-                if (typeof newCenter !== 'undefined') {
+                if (defined(newCenter)) {
                     if ((newSpan > 0) && (timeline._touchState.spanX > 0)) {
                         // Zoom and slide
                         zoom = (timeline._touchState.spanX / newSpan);

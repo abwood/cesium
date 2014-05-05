@@ -1,8 +1,9 @@
 /*global defineSuite*/
 defineSuite([
          'Scene/VRTheWorldTerrainProvider',
+         'Core/defined',
          'Core/loadImage',
-         'Core/loadXML',
+         'Core/loadWithXhr',
          'Core/DefaultProxy',
          'Core/Math',
          'Scene/GeographicTilingScheme',
@@ -11,8 +12,9 @@ defineSuite([
          'ThirdParty/when'
      ], function(
          VRTheWorldTerrainProvider,
+         defined,
          loadImage,
-         loadXML,
+         loadWithXhr,
          DefaultProxy,
          CesiumMath,
          GeographicTilingScheme,
@@ -23,7 +25,7 @@ defineSuite([
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
     beforeEach(function() {
-        loadXML.loadXML = function(url, headers, deferred) {
+        loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
             setTimeout(function() {
                 var parser = new DOMParser();
                 var xmlString =
@@ -54,7 +56,7 @@ defineSuite([
 
     afterEach(function() {
         loadImage.createImage = loadImage.defaultCreateImage;
-        loadXML.loadXML = loadXML.defaultLoadXML;
+        loadWithXhr.load = loadWithXhr.defaultLoad;
     });
 
     it('conforms to TerrainProvider interface', function() {
@@ -76,8 +78,8 @@ defineSuite([
         var provider = new VRTheWorldTerrainProvider({
             url : 'made/up/url'
         });
-        expect(provider.getErrorEvent()).toBeDefined();
-        expect(provider.getErrorEvent()).toBe(provider.getErrorEvent());
+        expect(provider.errorEvent).toBeDefined();
+        expect(provider.errorEvent).toBe(provider.errorEvent);
     });
 
     it('returns reasonable geometric error for various levels', function() {
@@ -86,7 +88,7 @@ defineSuite([
         });
 
         waitsFor(function() {
-            return provider.isReady();
+            return provider.ready;
         }, 'provider to be ready');
 
         runs(function() {
@@ -112,7 +114,7 @@ defineSuite([
         });
 
         expect(function() {
-            provider.getTilingScheme();
+            var t = provider.tilingScheme;
         }).toThrow();
     });
 
@@ -120,7 +122,7 @@ defineSuite([
         var provider = new VRTheWorldTerrainProvider({
             url : 'made/up/url'
         });
-        expect(provider.getCredit()).toBeUndefined();
+        expect(provider.credit).toBeUndefined();
     });
 
     it('logo is defined if credit is provided', function() {
@@ -128,7 +130,7 @@ defineSuite([
             url : 'made/up/url',
             credit : 'thanks to our awesome made up contributors!'
         });
-        expect(provider.getCredit()).toBeDefined();
+        expect(provider.credit).toBeDefined();
     });
 
     it('does not have a water mask', function() {
@@ -142,11 +144,11 @@ defineSuite([
         var provider = new VRTheWorldTerrainProvider({
             url : 'made/up/url'
         });
-        expect(provider.isReady()).toBe(false);
+        expect(provider.ready).toBe(false);
     });
 
     it('raises an error if the SRS is not supported', function() {
-        loadXML.loadXML = function(url, headers, deferred) {
+        loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
             setTimeout(function() {
                 var parser = new DOMParser();
                 var xmlString =
@@ -179,7 +181,7 @@ defineSuite([
         });
 
         var errorRaised = false;
-        terrainProvider.getErrorEvent().addEventListener(function() {
+        terrainProvider.errorEvent.addEventListener(function() {
             errorRaised = true;
         });
 
@@ -217,7 +219,7 @@ defineSuite([
             });
 
             waitsFor(function() {
-                return terrainProvider.isReady();
+                return terrainProvider.ready;
             });
 
             runs(function() {
@@ -249,13 +251,13 @@ defineSuite([
             });
 
             waitsFor(function() {
-                return terrainProvider.isReady();
+                return terrainProvider.ready;
             });
 
             var loadedData;
 
             runs(function() {
-                expect(terrainProvider.getTilingScheme() instanceof GeographicTilingScheme).toBe(true);
+                expect(terrainProvider.tilingScheme instanceof GeographicTilingScheme).toBe(true);
                 var promise = terrainProvider.requestTileGeometry(0, 0, 0);
 
                 when(promise, function(terrainData) {
@@ -264,7 +266,7 @@ defineSuite([
             });
 
             waitsFor(function() {
-                return typeof loadedData !== 'undefined';
+                return defined(loadedData);
             }, 'request to complete');
 
             runs(function() {
@@ -287,7 +289,7 @@ defineSuite([
             });
 
             waitsFor(function() {
-               return terrainProvider.isReady();
+               return terrainProvider.ready;
             });
 
             runs(function() {

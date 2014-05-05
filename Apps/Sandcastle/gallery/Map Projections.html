@@ -5,21 +5,18 @@
     <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">  <!-- Use Chrome Frame in IE -->
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
     <meta name="description" content="Render the 2D map using different map projections, such as Geographic or Web Mercator">
+    <meta name="cesium-sandcastle-labels" content="Showcases">
     <title>Cesium Demo</title>
     <script type="text/javascript" src="../Sandcastle-header.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/requirejs-2.1.9/require.js"></script>
     <script type="text/javascript">
-    var dojoConfig = {
+    require.config({
         baseUrl : '../../../Source',
-        packages: [
-            { name: 'dojo', location: '../ThirdParty/dojo-release-1.9.1/dojo' },
-            { name: 'dijit', location: '../ThirdParty/dojo-release-1.9.1/dijit' }
-        ]
-    };
+        waitSeconds : 60
+    });
     </script>
-    <script data-dojo-config="async: 1, tlmSiblingOfDojo: 0" src="../../../ThirdParty/dojo-release-1.9.1/dojo/dojo.js"></script>
-    <link rel="stylesheet" href="../../../ThirdParty/dojo-release-1.9.1/dijit/themes/claro/claro.css" type="text/css">
 </head>
-<body class="claro sandcastle-loading" data-sandcastle-bucket="bucket-dojo.html" data-sandcastle-title="Cesium + Dojo">
+<body class="sandcastle-loading" data-sandcastle-bucket="bucket-requirejs.html" data-sandcastle-title="Cesium">
 <style>
     @import url(../templates/bucket.css);
 </style>
@@ -27,45 +24,22 @@
 <div id="loadingOverlay"><h1>Loading...</h1></div>
 <div id="toolbar"></div>
 <script id="cesium_sandcastle_script">
-require([
-    'Cesium', 'dijit/form/Button'
-], function(
-    Cesium, Button)
-{
+require(['Cesium'], function(Cesium) {
     "use strict";
-
-    function createButtons(scene) {
-        var primitives = scene.getPrimitives();
-
-        var geographic = new Button({
-            label: "Geographic",
-            onClick: function() {
-                scene.scene2D.projection = new Cesium.GeographicProjection(Cesium.Ellipsoid.WGS84);
-                geographic.set('checked', true);
-                webMercator.set('checked', false);
-            }
-        });
-        geographic.placeAt('toolbar');
-
-        var webMercator = new Button({
-            label: "Web Mercator",
-            onClick: function() {
-                scene.scene2D.projection = new Cesium.WebMercatorProjection(Cesium.Ellipsoid.WGS84);
-                geographic.set('checked', false);
-                webMercator.set('checked', true);
-            }
-        });
-        webMercator.placeAt('toolbar');
-
-        geographic.set('checked', true);
-        webMercator.set('checked', false);
-    }
 
     var viewer = new Cesium.Viewer('cesiumContainer', {
         sceneMode : Cesium.SceneMode.SCENE2D
     });
 
-    createButtons(viewer.scene);
+    var scene = viewer.scene;
+
+    Sandcastle.addToolbarButton('Geographic', function() {
+        scene.scene2D.projection = new Cesium.GeographicProjection(Cesium.Ellipsoid.WGS84);
+    });
+
+    Sandcastle.addToolbarButton('Web Mercator', function() {
+        scene.scene2D.projection = new Cesium.WebMercatorProjection(Cesium.Ellipsoid.WGS84);
+    });
 
     Sandcastle.finishedLoading();
 });

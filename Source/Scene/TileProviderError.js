@@ -1,8 +1,12 @@
 /*global define*/
 define([
-        '../Core/defaultValue'
+        '../Core/defaultValue',
+        '../Core/defined',
+        '../Core/formatError'
     ], function(
-        defaultValue) {
+        defaultValue,
+        defined,
+        formatError) {
     "use strict";
 
     /**
@@ -100,7 +104,7 @@ define([
      */
     TileProviderError.handleError = function(previousError, provider, event, message, x, y, level, retryFunction) {
         var error = previousError;
-        if (typeof previousError === 'undefined') {
+        if (!defined(previousError)) {
             error = new TileProviderError(provider, message, x, y, level, 0);
         } else {
             error.provider = provider;
@@ -112,15 +116,14 @@ define([
             ++error.timesRetried;
         }
 
-        if (event.getNumberOfListeners() > 0) {
+        if (event.numberOfListeners > 0) {
             event.raiseEvent(error);
         } else {
             /*global console*/
-            console.log('An error occurred in "' + provider.constructor.name + '":');
-            console.log(message);
+            console.log('An error occurred in "' + provider.constructor.name + '": ' + formatError(message));
         }
 
-        if (error.retry && typeof retryFunction !== 'undefined') {
+        if (error.retry && defined(retryFunction)) {
             retryFunction();
         }
 
@@ -137,7 +140,7 @@ define([
      *        not previously resulted in an error.
      */
     TileProviderError.handleSuccess = function(previousError) {
-        if (typeof previousError !== 'undefined') {
+        if (defined(previousError)) {
             previousError.timesRetried = -1;
         }
     };

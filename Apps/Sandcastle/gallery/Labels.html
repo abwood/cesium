@@ -5,21 +5,18 @@
     <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">  <!-- Use Chrome Frame in IE -->
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
     <meta name="description" content="Create and style textual labels.">
+    <meta name="cesium-sandcastle-labels" content="Showcases">
     <title>Cesium Demo</title>
     <script type="text/javascript" src="../Sandcastle-header.js"></script>
+    <script type="text/javascript" src="../../../ThirdParty/requirejs-2.1.9/require.js"></script>
     <script type="text/javascript">
-    var dojoConfig = {
+    require.config({
         baseUrl : '../../../Source',
-        packages: [
-            { name: 'dojo', location: '../ThirdParty/dojo-release-1.9.1/dojo' },
-            { name: 'dijit', location: '../ThirdParty/dojo-release-1.9.1/dijit' }
-        ]
-    };
+        waitSeconds : 60
+    });
     </script>
-    <script data-dojo-config="async: 1, tlmSiblingOfDojo: 0" src="../../../ThirdParty/dojo-release-1.9.1/dojo/dojo.js"></script>
-    <link rel="stylesheet" href="../../../ThirdParty/dojo-release-1.9.1/dijit/themes/claro/claro.css" type="text/css">
 </head>
-<body class="claro sandcastle-loading" data-sandcastle-bucket="bucket-dojo.html" data-sandcastle-title="Cesium + Dojo">
+<body class="sandcastle-loading" data-sandcastle-bucket="bucket-requirejs.html" data-sandcastle-title="Cesium + require.js">
 <style>
     @import url(../templates/bucket.css);
 </style>
@@ -27,11 +24,7 @@
 <div id="loadingOverlay"><h1>Loading...</h1></div>
 <div id="toolbar"></div>
 <script id="cesium_sandcastle_script">
-require([
-    'Cesium', 'dijit/form/Button'
-], function(
-    Cesium, Button)
-{
+require(['Cesium'], function(Cesium) {
     "use strict";
 
     function addLabel(scene, ellipsoid) {
@@ -41,7 +34,7 @@ require([
             position : ellipsoid.cartographicToCartesian(Cesium.Cartographic.fromDegrees(-75.10, 39.57)),
             text     : 'Philadelphia'
         });
-        scene.getPrimitives().add(labels);
+        scene.primitives.add(labels);
     }
 
     function setLabelFont(scene, ellipsoid) {
@@ -52,12 +45,12 @@ require([
             text      : 'Philadelphia',
             // CSS font-family
             font      : '24px Helvetica',
-            fillColor : { red : 0.0, blue : 1.0, green : 1.0, alpha : 1.0 },
-            outlineColor : { red : 0.0, blue : 0.0, green : 0.0, alpha : 1.0 },
+            fillColor : new Cesium.Color(0.6, 0.9, 1.0),
+            outlineColor : Cesium.Color.BLACK,
             outlineWidth : 2,
             style : Cesium.LabelStyle.FILL_AND_OUTLINE
         });
-        scene.getPrimitives().add(labels);
+        scene.primitives.add(labels);
     }
 
     function setLabelProperties(scene, ellipsoid) {
@@ -68,9 +61,9 @@ require([
             text     : 'Philadelphia'
         });
 
-        l.setPosition(ellipsoid.cartographicToCartesian(Cesium.Cartographic.fromDegrees(-75.10, 39.57, 300000.0)));
-        l.setScale(2.0);
-        scene.getPrimitives().add(labels);
+        l.position = ellipsoid.cartographicToCartesian(Cesium.Cartographic.fromDegrees(-75.10, 39.57, 300000.0));
+        l.scale = 2.0;
+        scene.primitives.add(labels);
     }
 
     function addLabelsInReferenceFrame(scene, ellipsoid) {
@@ -94,55 +87,101 @@ require([
             position : new Cesium.Cartesian3(0.0, 0.0, 1000000.0),
             text     : 'Up'
         });
-        scene.getPrimitives().add(labels);
+        scene.primitives.add(labels);
     }
 
-    function createButtons(widget) {
-        var ellipsoid = widget.centralBody.getEllipsoid();
-        var scene = widget.scene;
-        var primitives = scene.getPrimitives();
+    function labelPixelOffsetByDistance(scene, ellipsoid) {
+        Sandcastle.declare(labelPixelOffsetByDistance); // For highlighting in Sandcastle.
 
-        new Button({
-            label: 'Add label',
-            onClick: function() {
-                primitives.removeAll();
-                addLabel(scene, ellipsoid);
-                Sandcastle.highlight(addLabel);
-            }
-        }).placeAt('toolbar');
+        var image = new Image();
+        image.onload = function() {
+            var labels = new Cesium.LabelCollection();
+            var billboards = new Cesium.BillboardCollection();
+            var textureAtlas = scene.createTextureAtlas({
+                image : image
+            });
+            billboards.textureAtlas = textureAtlas;
 
-        new Button({
-            label: 'Set font',
-            onClick: function() {
-                primitives.removeAll();
-                setLabelFont(scene, ellipsoid);
-                Sandcastle.highlight(setLabelFont);
-            }
-        }).placeAt('toolbar');
+            billboards.add({
+                position : ellipsoid.cartographicToCartesian(Cesium.Cartographic.fromDegrees(-75.10, 39.57)),
+                scaleByDistance : new Cesium.NearFarScalar(1.5e2, 5.0, 1.5e7, 0.5),
+                imageIndex : 0
+            });
 
-        new Button({
-            label: 'Set properties',
-            onClick: function() {
-                primitives.removeAll();
-                setLabelProperties(scene, ellipsoid);
-                Sandcastle.highlight(setLabelProperties);
-            }
-        }).placeAt('toolbar');
+            labels.add({
+                position : ellipsoid.cartographicToCartesian(Cesium.Cartographic.fromDegrees(-75.10, 39.57)),
+                text     : 'Label on top of scaling billboard',
+                font : '20px sans-serif',
+                horizontalOrigin : Cesium.HorizontalOrigin.CENTER,
+                pixelOffset : new Cesium.Cartesian2(0.0, image.height),
+                pixelOffsetScaleByDistance : new Cesium.NearFarScalar(1.5e2, 3.0, 1.5e7, 0.5)
+            });
 
-        new Button({
-            label: 'Add labels in reference frame',
-            onClick: function() {
-                primitives.removeAll();
-                addLabelsInReferenceFrame(scene, ellipsoid);
-                Sandcastle.highlight(addLabelsInReferenceFrame);
-            }
-        }).placeAt('toolbar');
+            scene.primitives.add(billboards);
+            scene.primitives.add(labels);
+        };
+        image.src = '../images/facility.gif';
+    }
+
+    function labelTranslucencyByDistance(scene, ellipsoid) {
+        Sandcastle.declare(labelTranslucencyByDistance); // For highlighting in Sandcastle.
+        var labels = new Cesium.LabelCollection();
+        labels.add({
+            position : ellipsoid.cartographicToCartesian(Cesium.Cartographic.fromDegrees(-73.94, 40.67)),
+            text     : 'New York',
+            translucencyByDistance : new Cesium.NearFarScalar(1.5e2, 1.0, 1.5e8, 0.0)
+        });
+        labels.add({
+            position : ellipsoid.cartographicToCartesian(Cesium.Cartographic.fromDegrees(-84.39, 33.75)),
+            text     : 'Atlanta',
+            translucencyByDistance : new Cesium.NearFarScalar(1.5e5, 1.0, 1.5e7, 0.0)
+        });
+        scene.primitives.add(labels);
     }
 
     var widget = new Cesium.CesiumWidget('cesiumContainer');
 
-    createButtons(widget);
-    addLabel(widget.scene, widget.centralBody.getEllipsoid());
+    var ellipsoid = widget.scene.globe.ellipsoid;
+    var scene = widget.scene;
+    var primitives = scene.primitives;
+
+    addLabel(scene, ellipsoid);
+
+    Sandcastle.addToolbarButton('Add label', function() {
+        primitives.removeAll();
+        addLabel(scene, ellipsoid);
+        Sandcastle.highlight(addLabel);
+    });
+
+    Sandcastle.addToolbarButton('Set font', function() {
+        primitives.removeAll();
+        setLabelFont(scene, ellipsoid);
+        Sandcastle.highlight(setLabelFont);
+    });
+
+    Sandcastle.addToolbarButton('Set properties', function() {
+        primitives.removeAll();
+        setLabelProperties(scene, ellipsoid);
+        Sandcastle.highlight(setLabelProperties);
+    });
+
+    Sandcastle.addToolbarButton('Add labels in reference frame', function() {
+        primitives.removeAll();
+        addLabelsInReferenceFrame(scene, ellipsoid);
+        Sandcastle.highlight(addLabelsInReferenceFrame);
+    });
+
+    Sandcastle.addToolbarButton('Fade label by distance', function() {
+        primitives.removeAll();
+        labelTranslucencyByDistance(scene, ellipsoid);
+        Sandcastle.highlight(labelTranslucencyByDistance);
+    });
+    
+    Sandcastle.addToolbarButton('Offset label by distance', function() {
+        primitives.removeAll();
+        labelPixelOffsetByDistance(scene, ellipsoid);
+        Sandcastle.highlight(labelPixelOffsetByDistance);
+    });
 
     Sandcastle.finishedLoading();
 });

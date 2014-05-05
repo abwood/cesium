@@ -1,158 +1,164 @@
 /*global define*/
-define([
-        '../Core/TimeInterval',
-        '../Core/defaultValue',
-        './CzmlBoolean',
-        './CzmlCartesian3',
-        './DynamicProperty',
-        './DynamicMaterialProperty'
+define(['../Core/defaultValue',
+        '../Core/defined',
+        '../Core/defineProperties',
+        '../Core/DeveloperError',
+        '../Core/Event',
+        './createDynamicPropertyDescriptor'
     ], function(
-        TimeInterval,
         defaultValue,
-        CzmlBoolean,
-        CzmlCartesian3,
-        DynamicProperty,
-        DynamicMaterialProperty) {
+        defined,
+        defineProperties,
+        DeveloperError,
+        Event,
+        createDynamicPropertyDescriptor) {
     "use strict";
 
     /**
-     * Represents a time-dynamic ellipsoid, typically used in conjunction with DynamicEllipsoidVisualizer and
-     * DynamicObjectCollection to visualize CZML.
+     * An optionally time-dynamic ellipsoid.
      *
      * @alias DynamicEllipsoid
      * @constructor
-     *
-     * @see DynamicObject
-     * @see DynamicProperty
-     * @see DynamicObjectCollection
-     * @see DynamicEllipsoidVisualizer
-     * @see VisualizerCollection
-     * @see CustomSensor
-     * @see CzmlDefaults
      */
     var DynamicEllipsoid = function() {
+        this._show = undefined;
+        this._showSubscription = undefined;
+        this._radii = undefined;
+        this._radiiSubscription = undefined;
+        this._material = undefined;
+        this._materialSubscription = undefined;
+        this._stackPartitions = undefined;
+        this._stackPartitionsSubscription = undefined;
+        this._slicePartitions = undefined;
+        this._slicePartitionsSubscription = undefined;
+        this._subdivisions = undefined;
+        this._subdivisionsSubscription = undefined;
+        this._definitionChanged = new Event();
+    };
+
+    defineProperties(DynamicEllipsoid.prototype, {
         /**
-         * A DynamicProperty of type CzmlBoolean which determines the ellipsoid's visibility.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets the event that is raised whenever a new property is assigned.
+         * @memberof DynamicEllipsoid.prototype
+         * @type {Event}
          */
-        this.show = undefined;
+        definitionChanged : {
+            get : function() {
+                return this._definitionChanged;
+            }
+        },
+
         /**
-         * A DynamicProperty of type CzmlCartesian3 which determines the ellipsoid's radii.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the boolean {@link Property} specifying the visibility of the ellipsoid.
+         * @memberof DynamicEllipsoid.prototype
+         * @type {Property}
          */
-        this.radii = undefined;
+        show : createDynamicPropertyDescriptor('show'),
+
         /**
-         * A DynamicMaterialProperty which determines the material.
-         * @type {DynamicMaterialProperty}
-         * @default undefined
+         * Gets or sets the {@link Cartesian3} {@link Property} specifying the radii of the ellipsoid.
+         * @memberof DynamicEllipsoid.prototype
+         * @type {Property}
          */
-        this.material = undefined;
+        radii : createDynamicPropertyDescriptor('radii'),
+
+        /**
+         * Gets or sets the {@link MaterialProperty} specifying the appearance of the ellipsoid.
+         * @memberof DynamicEllipsoid.prototype
+         * @type {MaterialProperty}
+         */
+        material : createDynamicPropertyDescriptor('material'),
+
+        /**
+         * Gets or sets the Boolean {@link Property} specifying whether the ellipsoid should be filled.
+         * @memberof DynamicEllipsoid.prototype
+         * @type {Property}
+         */
+        fill : createDynamicPropertyDescriptor('fill'),
+
+        /**
+         * Gets or sets the Boolean {@link Property} specifying whether the ellipsoid should be outlined.
+         * @memberof DynamicEllipsoid.prototype
+         * @type {Property}
+         */
+        outline : createDynamicPropertyDescriptor('outline'),
+
+        /**
+         * Gets or sets the Color {@link Property} specifying whether the color of the outline.
+         * @memberof DynamicEllipsoid.prototype
+         * @type {Property}
+         */
+        outlineColor : createDynamicPropertyDescriptor('outlineColor'),
+
+        /**
+         * Gets or sets the Number {@link Property} specifying the number of times to partition the ellipsoid into stacks.
+         * @memberof DynamicEllipsoid.prototype
+         * @type {Property}
+         */
+        stackPartitions : createDynamicPropertyDescriptor('stackPartitions'),
+
+        /**
+         * Gets or sets the Number {@link Property} specifying the number of times to partition the ellipsoid into radial slices.
+         * @memberof DynamicEllipsoid.prototype
+         * @type {Property}
+         */
+        slicePartitions : createDynamicPropertyDescriptor('slicePartitions'),
+
+        /**
+         * Gets or sets the Number {@link Property} specifying the number of points per line, determining the granularity of the curvature .
+         * @memberof DynamicEllipsoid.prototype
+         * @type {Property}
+         */
+        subdivisions : createDynamicPropertyDescriptor('subdivisions')
+    });
+
+    /**
+     * Duplicates a DynamicEllipsoid instance.
+     * @memberof DynamicEllipsoid
+     *
+     * @param {DynamicEllipsoid} [result] The object onto which to store the result.
+     * @returns {DynamicEllipsoid} The modified result parameter or a new instance if one was not provided.
+     */
+    DynamicEllipsoid.prototype.clone = function(result) {
+        if (!defined(result)) {
+            result = new DynamicEllipsoid();
+        }
+        result.show = this.show;
+        result.radii = this.radii;
+        result.material = this.material;
+        result.fill = this.fill;
+        result.outline = this.outline;
+        result.outlineColor = this.outlineColor;
+        result.stackPartitions = this.stackPartitions;
+        result.slicePartitions = this.slicePartitions;
+        result.subdivisions = this.subdivisions;
+
+        return result;
     };
 
     /**
-     * Processes a single CZML packet and merges its data into the provided DynamicObject's ellipsoid.
-     * If the DynamicObject does not have a ellipsoid, one is created.  This method is not
-     * normally called directly, but is part of the array of CZML processing functions that is
-     * passed into the DynamicObjectCollection constructor.
+     * Assigns each unassigned property on this object to the value
+     * of the same property on the provided source object.
+     * @memberof DynamicEllipsoid
      *
-     * @param {DynamicObject} dynamicObject The DynamicObject which will contain the ellipsoid data.
-     * @param {Object} packet The CZML packet to process.
-     * @param {DynamicObject} dynamicObjectCollection The DynamicObjectCollection to which the DynamicObject belongs.
-     *
-     * @returns {Boolean} true if any new properties were created while processing the packet, false otherwise.
-     *
-     * @see DynamicObject
-     * @see DynamicProperty
-     * @see DynamicObjectCollection
-     * @see CzmlDefaults#updaters
+     * @param {DynamicEllipsoid} source The object to be merged into this object.
      */
-    DynamicEllipsoid.processCzmlPacket = function(dynamicObject, packet, dynamicObjectCollection) {
-        var ellipsoidData = packet.ellipsoid;
-        if (typeof ellipsoidData === 'undefined') {
-            return false;
+    DynamicEllipsoid.prototype.merge = function(source) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(source)) {
+            throw new DeveloperError('source is required.');
         }
+        //>>includeEnd('debug');
 
-        var ellipsoidUpdated = false;
-        var ellipsoid = dynamicObject.ellipsoid;
-        ellipsoidUpdated = typeof ellipsoid === 'undefined';
-        if (ellipsoidUpdated) {
-            dynamicObject.ellipsoid = ellipsoid = new DynamicEllipsoid();
-        }
-
-        var interval = ellipsoidData.interval;
-        if (typeof interval !== 'undefined') {
-            interval = TimeInterval.fromIso8601(interval);
-        }
-
-        if (typeof ellipsoidData.show !== 'undefined') {
-            var show = ellipsoid.show;
-            if (typeof show === 'undefined') {
-                ellipsoid.show = show = new DynamicProperty(CzmlBoolean);
-                ellipsoidUpdated = true;
-            }
-            show.processCzmlIntervals(ellipsoidData.show, interval);
-        }
-
-        if (typeof ellipsoidData.radii !== 'undefined') {
-            var radii = ellipsoid.radii;
-            if (typeof radii === 'undefined') {
-                ellipsoid.radii = radii = new DynamicProperty(CzmlCartesian3);
-                ellipsoidUpdated = true;
-            }
-            radii.processCzmlIntervals(ellipsoidData.radii, interval);
-        }
-
-        if (typeof ellipsoidData.material !== 'undefined') {
-            var material = ellipsoid.material;
-            if (typeof material === 'undefined') {
-                ellipsoid.material = material = new DynamicMaterialProperty();
-                ellipsoidUpdated = true;
-            }
-            material.processCzmlIntervals(ellipsoidData.material, interval);
-        }
-
-        return ellipsoidUpdated;
-    };
-
-    /**
-     * Given two DynamicObjects, takes the ellipsoid properties from the second
-     * and assigns them to the first, assuming such a property did not already exist.
-     * This method is not normally called directly, but is part of the array of CZML processing
-     * functions that is passed into the CompositeDynamicObjectCollection constructor.
-     *
-     * @param {DynamicObject} targetObject The DynamicObject which will have properties merged onto it.
-     * @param {DynamicObject} objectToMerge The DynamicObject containing properties to be merged.
-     *
-     * @see CzmlDefaults
-     */
-    DynamicEllipsoid.mergeProperties = function(targetObject, objectToMerge) {
-        var ellipsoidToMerge = objectToMerge.ellipsoid;
-        if (typeof ellipsoidToMerge !== 'undefined') {
-
-            var targetEllipsoid = targetObject.ellipsoid;
-            if (typeof targetEllipsoid === 'undefined') {
-                targetObject.ellipsoid = targetEllipsoid = new DynamicEllipsoid();
-            }
-
-            targetEllipsoid.show = defaultValue(targetEllipsoid.show, ellipsoidToMerge.show);
-            targetEllipsoid.radii = defaultValue(targetEllipsoid.radii, ellipsoidToMerge.radii);
-            targetEllipsoid.material = defaultValue(targetEllipsoid.material, ellipsoidToMerge.material);
-        }
-    };
-
-    /**
-     * Given a DynamicObject, undefines the ellipsoid associated with it.
-     * This method is not normally called directly, but is part of the array of CZML processing
-     * functions that is passed into the CompositeDynamicObjectCollection constructor.
-     *
-     * @param {DynamicObject} dynamicObject The DynamicObject to remove the ellipsoid from.
-     *
-     * @see CzmlDefaults
-     */
-    DynamicEllipsoid.undefineProperties = function(dynamicObject) {
-        dynamicObject.ellipsoid = undefined;
+        this.show = defaultValue(this.show, source.show);
+        this.radii = defaultValue(this.radii, source.radii);
+        this.material = defaultValue(this.material, source.material);
+        this.fill = defaultValue(this.fill, source.fill);
+        this.outline = defaultValue(this.outline, source.outline);
+        this.outlineColor = defaultValue(this.outlineColor, source.outlineColor);
+        this.stackPartitions = defaultValue(this.stackPartitions, source.stackPartitions);
+        this.slicePartitions = defaultValue(this.slicePartitions, source.slicePartitions);
+        this.subdivisions = defaultValue(this.subdivisions, source.subdivisions);
     };
 
     return DynamicEllipsoid;

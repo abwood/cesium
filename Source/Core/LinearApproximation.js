@@ -1,7 +1,9 @@
 /*global define*/
 define([
+        './defined',
         './DeveloperError'
        ],function(
+         defined,
          DeveloperError) {
     "use strict";
 
@@ -29,9 +31,12 @@ define([
      * @returns The number of required data points needed for the desired degree of interpolation.
      */
     LinearApproximation.getRequiredDataPoints = function(degree) {
+        //>>includeStart('debug', pragmas.debug);
         if (degree !== 1) {
             throw new DeveloperError('Linear interpolation can only generate a first degree polynomial.');
         }
+        //>>includeEnd('debug');
+
         return 2;
     };
 
@@ -61,13 +66,15 @@ define([
      * @memberof LinearApproximation
      */
     LinearApproximation.interpolateOrderZero = function(x, xTable, yTable, yStride, result) {
+        //>>includeStart('debug', pragmas.debug);
         if (xTable.length !== 2) {
             throw new DeveloperError('The xTable provided to the linear interpolator must have exactly two elements.');
         } else if (yStride <= 0) {
             throw new DeveloperError('There must be at least 1 dependent variable for each independent variable.');
         }
+        //>>includeEnd('debug');
 
-        if (typeof result === 'undefined') {
+        if (!defined(result)) {
             result = new Array(yStride);
         }
 
@@ -77,9 +84,11 @@ define([
         var x0 = xTable[0];
         var x1 = xTable[1];
 
+        //>>includeStart('debug', pragmas.debug);
         if (x0 === x1) {
             throw new DeveloperError('Divide by zero error: xTable[0] and xTable[1] are equal');
         }
+        //>>includeEnd('debug');
 
         for (i = 0; i < yStride; i++) {
             y0 = yTable[i];

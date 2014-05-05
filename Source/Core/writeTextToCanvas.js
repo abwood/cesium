@@ -1,11 +1,13 @@
 /*global define*/
 define([
         './defaultValue',
+        './defined',
         './DeveloperError',
         './Color',
         '../ThirdParty/measureText'
     ], function(
         defaultValue,
+        defined,
         DeveloperError,
         Color,
         measureText) {
@@ -29,10 +31,11 @@ define([
      *                   blank, returns undefined.
      */
     var writeTextToCanvas = function(text, description) {
-        if (typeof text === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(text)) {
             throw new DeveloperError('text is required.');
         }
-
+        //>>includeEnd('debug');
         if (text === '') {
             return undefined;
         }

@@ -1,5 +1,7 @@
 /*global define*/
-define(['./Cartesian3',
+define([
+        './Cartesian3',
+        './defined',
         './DeveloperError',
         './JulianDate',
         './Math',
@@ -8,6 +10,7 @@ define(['./Cartesian3',
         './TimeStandard'
     ], function(
         Cartesian3,
+        defined,
         DeveloperError,
         JulianDate,
         CesiumMath,
@@ -98,7 +101,7 @@ define(['./Cartesian3',
         }
 
         var radius = semilatus / denom;
-        if (typeof result === 'undefined') {
+        if (!defined(result)) {
             result = new Cartesian3(radius * costheta, radius * sintheta, 0.0);
         } else {
             result.x = radius * costheta;
@@ -106,7 +109,7 @@ define(['./Cartesian3',
             result.z = 0.0;
         }
 
-        return perifocalToEquatorial.multiplyByVector(result, result);
+        return Matrix3.multiplyByVector(perifocalToEquatorial, result, result);
     }
 
     function chooseOrbit(eccentricity, tolerance) {
@@ -217,7 +220,7 @@ define(['./Cartesian3',
 
         var cosraan = Math.cos(rightAscension);
         var sinraan = Math.sin(rightAscension);
-        if (typeof result === 'undefined') {
+        if (!defined(result)) {
             result = new Matrix3(
                     cosraan * cosap - sinraan * sinap * cosi,
                     -cosraan * sinap - sinraan * cosap * cosi,
@@ -304,7 +307,7 @@ define(['./Cartesian3',
     var Sl7 = -112 * 1e-7;
     var Sl8 = -80 * 1e-7;
 
-    var scratchDate = new JulianDate();
+    var scratchDate = new JulianDate(0, 0.0, TimeStandard.TAI);
     /**
      * Gets a point describing the motion of the Earth-Moon barycenter according to the equations
      * described in section 6.
@@ -461,9 +464,8 @@ define(['./Cartesian3',
     var moonEarthMassRatio = 0.012300034; // From 1992 mu value in Table 2
     var factor = moonEarthMassRatio / (moonEarthMassRatio + 1.0) * -1;
     function computeSimonEarth(date, result) {
-        var moon = computeSimonMoon(date);
-        result = moon.multiplyByScalar(factor, result);
-        return result;
+        result = computeSimonMoon(date, result);
+        return Cartesian3.multiplyByScalar(result, factor, result);
     }
 
     // Values for the <code>axesTransformation</code> needed for the rotation were found using the STK Components
@@ -481,18 +483,18 @@ define(['./Cartesian3',
      * @returns {Cartesian3} Calculated sun position
      */
     Simon1994PlanetaryPositions.ComputeSunPositionInEarthInertialFrame= function(date, result){
-        if (typeof date === 'undefined') {
+        if (!defined(date)) {
             date = new JulianDate();
         }
         //first forward transformation
         translation = computeSimonEarthMoonBarycenter(date, translation);
-        result = translation.negate(result);
+        result = Cartesian3.negate(translation, result);
 
         //second forward transformation
         computeSimonEarth(date, translation);
 
-        result.subtract(translation, result);
-        axesTransformation.multiplyByVector(result, result);
+        Cartesian3.subtract(result, translation, result);
+        Matrix3.multiplyByVector(axesTransformation, result, result);
 
         return result;
     };
@@ -505,11 +507,11 @@ define(['./Cartesian3',
      * @returns {Cartesian3} Calculated moon position
      */
     Simon1994PlanetaryPositions.ComputeMoonPositionInEarthInertialFrame = function(date, result){
-        if (typeof date === 'undefined') {
+        if (!defined(date)) {
             date = new JulianDate();
         }
         result = computeSimonMoon(date, result);
-        axesTransformation.multiplyByVector(result, result);
+        Matrix3.multiplyByVector(axesTransformation, result, result);
 
         return result;
     };

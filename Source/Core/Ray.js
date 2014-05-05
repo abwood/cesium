@@ -1,10 +1,12 @@
 /*global define*/
 define([
         './DeveloperError',
+        './defined',
         './defaultValue',
         './Cartesian3'
        ], function(
          DeveloperError,
+         defined,
          defaultValue,
          Cartesian3) {
     "use strict";
@@ -19,7 +21,7 @@ define([
      */
     var Ray = function(origin, direction) {
         direction = Cartesian3.clone(defaultValue(direction, Cartesian3.ZERO));
-        if (!direction.equals(Cartesian3.ZERO)) {
+        if (!Cartesian3.equals(direction, Cartesian3.ZERO)) {
             Cartesian3.normalize(direction, direction);
         }
 
@@ -46,19 +48,23 @@ define([
      * @param {Cartesian3} [result] The object in which the result will be stored.
      * @returns The modified result parameter, or a new instance if none was provided.
      *
-     * @exception {DeveloperError} t is a required number
-     *
      * @example
      * //Get the first intersection point of a ray and an ellipsoid.
-     * var intersection = IntersectionTests.rayEllipsoid(ray, ellipsoid);
-     * var point = ray.getPoint(intersection.start);
+     * var intersection = Cesium.IntersectionTests.rayEllipsoid(ray, ellipsoid);
+     * var point = Ray.getPoint(ray, intersection.start);
      */
-    Ray.prototype.getPoint = function(t, result) {
+    Ray.getPoint = function(ray, t, result) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(ray)){
+            throw new DeveloperError('ray is requred');
+        }
         if (typeof t !== 'number') {
             throw new DeveloperError('t is a required number');
         }
-        result = Cartesian3.multiplyByScalar(this.direction, t, result);
-        return Cartesian3.add(this.origin, result, result);
+        //>>includeEnd('debug');
+
+        result = Cartesian3.multiplyByScalar(ray.direction, t, result);
+        return Cartesian3.add(ray.origin, result, result);
     };
 
     return Ray;

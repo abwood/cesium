@@ -1,156 +1,95 @@
 /*global defineSuite*/
 defineSuite([
              'DynamicScene/DynamicEllipsoid',
-             'DynamicScene/DynamicObject',
-             'Core/JulianDate',
+             'DynamicScene/ColorMaterialProperty',
+             'DynamicScene/ConstantProperty',
              'Core/Cartesian3',
-             'Core/Color',
-             'Core/Iso8601',
-             'Core/TimeInterval'
-            ], function(
-              DynamicEllipsoid,
-              DynamicObject,
-              JulianDate,
-              Cartesian3,
-              Color,
-              Iso8601,
-              TimeInterval) {
+             'Core/Color'
+         ], function(
+             DynamicEllipsoid,
+             ColorMaterialProperty,
+             ConstantProperty,
+             Cartesian3,
+             Color) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
-    var expectedRadii = new Cartesian3(1.0, 2.0, 3.0);
+    it('merge assigns unassigned properties', function() {
+        var source = new DynamicEllipsoid();
+        source.material = new ColorMaterialProperty();
+        source.radii = new ConstantProperty(new Cartesian3());
+        source.show = new ConstantProperty(true);
+        source.stackPartitions = new ConstantProperty(16);
+        source.slicePartitions = new ConstantProperty(32);
+        source.subdivisions = new ConstantProperty(64);
 
-    var ellipsoidPacket = {
-        ellipsoid : {
-            radii : {
-                cartesian : [1.0, 2.0, 3.0]
-            },
-            show : true,
-            material : {
-                solidColor : {
-                    color : {
-                        rgbaf : [0.1, 0.1, 0.1, 0.1]
-                    }
-                }
-            }
-        }
-    };
+        var target = new DynamicEllipsoid();
+        target.merge(source);
 
-    var ellipsoidPacketInterval = {
-        ellipsoid : {
-            interval : '2000-01-01/2001-01-01',
-            radii : {
-                cartesian : [1.0, 2.0, 3.0]
-            },
-            show : true,
-            material : {
-                solidColor : {
-                    color : {
-                        rgbaf : [0.1, 0.1, 0.1, 0.1]
-                    }
-                }
-            }
-        }
-    };
-
-    it('processCzmlPacket adds data for infinite ellipsoid.', function() {
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicEllipsoid.processCzmlPacket(dynamicObject, ellipsoidPacket)).toEqual(true);
-
-        expect(dynamicObject.ellipsoid).toBeDefined();
-        expect(dynamicObject.ellipsoid.radii.getValue(Iso8601.MINIMUM_VALUE)).toEqual(expectedRadii);
-        expect(dynamicObject.ellipsoid.show.getValue(Iso8601.MINIMUM_VALUE)).toEqual(ellipsoidPacket.ellipsoid.show);
-        expect(dynamicObject.ellipsoid.material.getValue(Iso8601.MINIMUM_VALUE).uniforms.color).toEqual(new Color(0.1, 0.1, 0.1, 0.1));
+        expect(target.material).toBe(source.material);
+        expect(target.radii).toBe(source.radii);
+        expect(target.show).toBe(source.show);
+        expect(target.stackPartitions).toBe(source.stackPartitions);
+        expect(target.slicePartitions).toBe(source.slicePartitions);
+        expect(target.subdivisions).toBe(source.subdivisions);
     });
 
-    it('processCzmlPacket adds data for constrained ellipsoid.', function() {
-        var validTime = TimeInterval.fromIso8601(ellipsoidPacketInterval.ellipsoid.interval).start;
-        var invalidTime = validTime.addSeconds(-1);
+    it('merge does not assign assigned properties', function() {
+        var source = new DynamicEllipsoid();
+        source.material = new ColorMaterialProperty();
+        source.radii = new ConstantProperty(new Cartesian3());
+        source.show = new ConstantProperty(true);
+        source.stackPartitions = new ConstantProperty(16);
+        source.slicePartitions = new ConstantProperty(32);
+        source.subdivisions = new ConstantProperty(64);
 
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicEllipsoid.processCzmlPacket(dynamicObject, ellipsoidPacketInterval)).toEqual(true);
+        var material = new ColorMaterialProperty();
+        var radii = new ConstantProperty(new Cartesian3());
+        var show = new ConstantProperty(true);
+        var stackPartitions = new ConstantProperty(1);
+        var slicePartitions = new ConstantProperty(2);
+        var subdivisions = new ConstantProperty(3);
 
-        expect(dynamicObject.ellipsoid).toBeDefined();
-        expect(dynamicObject.ellipsoid.radii.getValue(validTime)).toEqual(expectedRadii);
-        expect(dynamicObject.ellipsoid.show.getValue(validTime)).toEqual(ellipsoidPacketInterval.ellipsoid.show);
-        expect(dynamicObject.ellipsoid.material.getValue(validTime).uniforms.color).toEqual(new Color(0.1, 0.1, 0.1, 0.1));
+        var target = new DynamicEllipsoid();
+        target.material = material;
+        target.radii = radii;
+        target.show = show;
+        target.stackPartitions = stackPartitions;
+        target.slicePartitions = slicePartitions;
+        target.subdivisions = subdivisions;
 
-        expect(dynamicObject.ellipsoid.radii.getValue(invalidTime)).toBeUndefined();
-        expect(dynamicObject.ellipsoid.show.getValue(invalidTime)).toBeUndefined();
-        expect(dynamicObject.ellipsoid.material.getValue(invalidTime)).toBeUndefined();
+        target.merge(source);
+
+        expect(target.material).toBe(material);
+        expect(target.radii).toBe(radii);
+        expect(target.show).toBe(show);
+        expect(target.stackPartitions).toBe(stackPartitions);
+        expect(target.slicePartitions).toBe(slicePartitions);
+        expect(target.subdivisions).toBe(subdivisions);
     });
 
-    it('processCzmlPacket returns false if no data.', function() {
-        var packet = {};
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicEllipsoid.processCzmlPacket(dynamicObject, packet)).toEqual(false);
-        expect(dynamicObject.ellipsoid).toBeUndefined();
+    it('clone works', function() {
+        var source = new DynamicEllipsoid();
+        source.material = new ColorMaterialProperty();
+        source.radii = new ConstantProperty(new Cartesian3());
+        source.show = new ConstantProperty(true);
+        source.stackPartitions = new ConstantProperty(16);
+        source.slicePartitions = new ConstantProperty(32);
+        source.subdivisions = new ConstantProperty(64);
+
+        var result = source.clone();
+        expect(result.material).toBe(source.material);
+        expect(result.radii).toBe(source.radii);
+        expect(result.show).toBe(source.show);
+        expect(result.stackPartitions).toBe(source.stackPartitions);
+        expect(result.slicePartitions).toBe(source.slicePartitions);
+        expect(result.subdivisions).toBe(source.subdivisions);
     });
 
-    it('mergeProperties does not change a fully configured ellipsoid', function() {
-        var expectedMaterial = 4;
-        var expectedRadii = 5;
-        var expectedShow = 6;
-
-        var objectToMerge = new DynamicObject('objectToMerge');
-        objectToMerge.ellipsoid = new DynamicEllipsoid();
-        objectToMerge.material = 1;
-        objectToMerge.radii = 2;
-        objectToMerge.show = 3;
-
-        var mergedObject = new DynamicObject('mergedObject');
-        mergedObject.ellipsoid = new DynamicEllipsoid();
-        mergedObject.ellipsoid.material = expectedMaterial;
-        mergedObject.ellipsoid.radii = expectedRadii;
-        mergedObject.ellipsoid.show = expectedShow;
-
-        DynamicEllipsoid.mergeProperties(mergedObject, objectToMerge);
-
-        expect(mergedObject.ellipsoid.material).toEqual(expectedMaterial);
-        expect(mergedObject.ellipsoid.radii).toEqual(expectedRadii);
-        expect(mergedObject.ellipsoid.show).toEqual(expectedShow);
-    });
-
-    it('mergeProperties creates and configures an undefined ellipsoid', function() {
-        var objectToMerge = new DynamicObject('objectToMerge');
-        objectToMerge.ellipsoid = new DynamicEllipsoid();
-        objectToMerge.material = 1;
-        objectToMerge.radii = 2;
-        objectToMerge.show = 3;
-
-        var mergedObject = new DynamicObject('mergedObject');
-
-        DynamicEllipsoid.mergeProperties(mergedObject, objectToMerge);
-
-        expect(mergedObject.ellipsoid.material).toEqual(objectToMerge.ellipsoid.material);
-        expect(mergedObject.ellipsoid.radii).toEqual(objectToMerge.ellipsoid.radii);
-        expect(mergedObject.ellipsoid.show).toEqual(objectToMerge.ellipsoid.show);
-    });
-
-    it('mergeProperties does not change when used with an undefined ellipsoid', function() {
-        var expectedMaterial = 4;
-        var expectedRadii = 5;
-        var expectedShow = 6;
-
-        var objectToMerge = new DynamicObject('objectToMerge');
-
-        var mergedObject = new DynamicObject('mergedObject');
-        mergedObject.ellipsoid = new DynamicEllipsoid();
-        mergedObject.ellipsoid.material = expectedMaterial;
-        mergedObject.ellipsoid.radii = expectedRadii;
-        mergedObject.ellipsoid.show = expectedShow;
-
-        DynamicEllipsoid.mergeProperties(mergedObject, objectToMerge);
-
-        expect(mergedObject.ellipsoid.material).toEqual(expectedMaterial);
-        expect(mergedObject.ellipsoid.radii).toEqual(expectedRadii);
-        expect(mergedObject.ellipsoid.show).toEqual(expectedShow);
-    });
-
-    it('undefineProperties works', function() {
-        var testObject = new DynamicObject('testObject');
-        testObject.ellipsoid = new DynamicEllipsoid();
-        DynamicEllipsoid.undefineProperties(testObject);
-        expect(testObject.ellipsoid).toBeUndefined();
+    it('merge throws if source undefined', function() {
+        var target = new DynamicEllipsoid();
+        expect(function() {
+            target.merge(undefined);
+        }).toThrowDeveloperError();
     });
 });

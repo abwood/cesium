@@ -1,288 +1,167 @@
 /*global defineSuite*/
 defineSuite([
              'DynamicScene/DynamicLabel',
-             'DynamicScene/DynamicObject',
-             'Core/JulianDate',
              'Core/Cartesian2',
              'Core/Cartesian3',
              'Core/Color',
-             'Core/Iso8601',
-             'Core/TimeInterval',
+             'Core/NearFarScalar',
              'Scene/HorizontalOrigin',
              'Scene/VerticalOrigin',
              'Scene/LabelStyle',
-             'Specs/MockProperty'
-            ], function(
-              DynamicLabel,
-              DynamicObject,
-              JulianDate,
-              Cartesian2,
-              Cartesian3,
-              Color,
-              Iso8601,
-              TimeInterval,
-              HorizontalOrigin,
-              VerticalOrigin,
-              LabelStyle,
-              MockProperty) {
+             'DynamicScene/ConstantProperty'
+         ], function(
+             DynamicLabel,
+             Cartesian2,
+             Cartesian3,
+             Color,
+             NearFarScalar,
+             HorizontalOrigin,
+             VerticalOrigin,
+             LabelStyle,
+             ConstantProperty) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
-    it('processCzmlPacket adds data for infinite label.', function() {
-        var labelPacket = {
-            label : {
-                text : 'TestFacility',
-                font : '10pt "Open Sans"',
-                style : 'FILL',
-                fillColor : {
-                    rgbaf : [0.1, 0.1, 0.1, 0.1]
-                },
-                outlineColor : {
-                    rgbaf : [0.2, 0.2, 0.2, 0.2]
-                },
-                outlineWidth : 3.14,
-                horizontalOrigin : 'LEFT',
-                verticalOrigin : 'CENTER',
-                eyeOffset : {
-                    cartesian : [1.0, 2.0, 3.0]
-                },
-                pixelOffset : {
-                    cartesian2 : [4.0, 5.0]
-                },
-                scale : 1.0,
-                show : true
-            }
-        };
+    it('merge assigns unassigned properties', function() {
+        var source = new DynamicLabel();
+        source.text = new ConstantProperty('not it');
+        source.font = new ConstantProperty('arial');
+        source.style = new ConstantProperty(LabelStyle.FILL);
+        source.fillColor = new ConstantProperty(Color.BLACK);
+        source.outlineColor = new ConstantProperty(Color.BLUE);
+        source.outlineWidth = new ConstantProperty(5);
+        source.horizontalOrigin = new ConstantProperty(HorizontalOrigin.LEFT);
+        source.verticalOrigin = new ConstantProperty(VerticalOrigin.BOTTOM);
+        source.eyeOffset = new ConstantProperty(Cartesian3.UNIT_Y);
+        source.pixelOffset = new ConstantProperty(Cartesian2.UNIT_X);
+        source.scale = new ConstantProperty(1);
+        source.show = new ConstantProperty(false);
+        source.translucencyByDistance = new ConstantProperty(new NearFarScalar());
+        source.pixelOffsetScaleByDistance = new ConstantProperty(new NearFarScalar(1.0, 0.0, 3.0e9, 0.0));
 
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicLabel.processCzmlPacket(dynamicObject, labelPacket)).toEqual(true);
-        expect(dynamicObject.label).toBeDefined();
-        expect(dynamicObject.label.text.getValue(Iso8601.MINIMUM_VALUE)).toEqual(labelPacket.label.text);
-        expect(dynamicObject.label.font.getValue(Iso8601.MINIMUM_VALUE)).toEqual(labelPacket.label.font);
-        expect(dynamicObject.label.style.getValue(Iso8601.MINIMUM_VALUE)).toEqual(LabelStyle.FILL);
-        expect(dynamicObject.label.fillColor.getValue(Iso8601.MINIMUM_VALUE)).toEqual(new Color(0.1, 0.1, 0.1, 0.1));
-        expect(dynamicObject.label.outlineColor.getValue(Iso8601.MINIMUM_VALUE)).toEqual(new Color(0.2, 0.2, 0.2, 0.2));
-        expect(dynamicObject.label.outlineWidth.getValue(Iso8601.MINIMUM_VALUE)).toEqual(labelPacket.label.outlineWidth);
-        expect(dynamicObject.label.horizontalOrigin.getValue(Iso8601.MINIMUM_VALUE)).toEqual(HorizontalOrigin.LEFT);
-        expect(dynamicObject.label.verticalOrigin.getValue(Iso8601.MINIMUM_VALUE)).toEqual(VerticalOrigin.CENTER);
-        expect(dynamicObject.label.eyeOffset.getValue(Iso8601.MINIMUM_VALUE)).toEqual(new Cartesian3(1.0, 2.0, 3.0));
-        expect(dynamicObject.label.pixelOffset.getValue(Iso8601.MINIMUM_VALUE)).toEqual(new Cartesian2(4.0, 5.0));
-        expect(dynamicObject.label.scale.getValue(Iso8601.MINIMUM_VALUE)).toEqual(labelPacket.label.scale);
-        expect(dynamicObject.label.show.getValue(Iso8601.MINIMUM_VALUE)).toEqual(labelPacket.label.show);
+        var target = new DynamicLabel();
+        target.merge(source);
+
+        expect(target.text).toBe(source.text);
+        expect(target.font).toBe(source.font);
+        expect(target.style).toBe(source.style);
+        expect(target.fillColor).toBe(source.fillColor);
+        expect(target.outlineColor).toBe(source.outlineColor);
+        expect(target.outlineWidth).toBe(source.outlineWidth);
+        expect(target.horizontalOrigin).toBe(source.horizontalOrigin);
+        expect(target.verticalOrigin).toBe(source.verticalOrigin);
+        expect(target.eyeOffset).toBe(source.eyeOffset);
+        expect(target.pixelOffset).toBe(source.pixelOffset);
+        expect(target.scale).toBe(source.scale);
+        expect(target.show).toBe(source.show);
+        expect(target.translucencyByDistance).toBe(source.translucencyByDistance);
+        expect(target.pixelOffsetScaleByDistance).toBe(source.pixelOffsetScaleByDistance);
     });
 
-    it('processCzmlPacket adds data for constrained label.', function() {
-        var labelPacket = {
-            label : {
-                interval : '2000-01-01/2001-01-01',
-                text : 'TestFacility',
-                font : '10pt "Open Sans"',
-                style : 'FILL',
-                fillColor : {
-                    rgbaf : [0.1, 0.1, 0.1, 0.1]
-                },
-                outlineColor : {
-                    rgbaf : [0.2, 0.2, 0.2, 0.2]
-                },
-                outlineWidth : 2.78,
-                horizontalOrigin : 'LEFT',
-                verticalOrigin : 'CENTER',
-                eyeOffset : {
-                    cartesian : [1.0, 2.0, 3.0]
-                },
-                pixelOffset : {
-                    cartesian2 : [4.0, 5.0]
-                },
-                scale : 1.0,
-                show : true
-            }
-        };
+    it('merge does not assign assigned properties', function() {
+        var source = new DynamicLabel();
+        source.text = new ConstantProperty('not it');
+        source.font = new ConstantProperty('arial');
+        source.style = new ConstantProperty(LabelStyle.FILL);
+        source.fillColor = new ConstantProperty(Color.BLACK);
+        source.outlineColor = new ConstantProperty(Color.BLUE);
+        source.outlineWidth = new ConstantProperty(5);
+        source.horizontalOrigin = new ConstantProperty(HorizontalOrigin.LEFT);
+        source.verticalOrigin = new ConstantProperty(VerticalOrigin.BOTTOM);
+        source.eyeOffset = new ConstantProperty(Cartesian3.UNIT_Y);
+        source.pixelOffset = new ConstantProperty(Cartesian2.UNIT_X);
+        source.scale = new ConstantProperty(1);
+        source.show = new ConstantProperty(false);
+        source.translucencyByDistance = new ConstantProperty(new NearFarScalar());
+        source.pixelOffsetScaleByDistance = new ConstantProperty(new NearFarScalar(1.0, 0.0, 3.0e9, 0.0));
 
-        var validTime = TimeInterval.fromIso8601(labelPacket.label.interval).start;
-        var invalidTime = validTime.addSeconds(-1);
+        var text = new ConstantProperty('my text');
+        var font = new ConstantProperty('10px serif');
+        var style = new ConstantProperty(LabelStyle.OUTLINE);
+        var fillColor = new ConstantProperty(Color.RED);
+        var outlineColor = new ConstantProperty(Color.WHITE);
+        var outlineWidth = new ConstantProperty(4);
+        var horizontalOrigin = new ConstantProperty(HorizontalOrigin.RIGHT);
+        var verticalOrigin = new ConstantProperty(VerticalOrigin.TOP);
+        var eyeOffset = new ConstantProperty(Cartesian3.UNIT_Z);
+        var pixelOffset = new ConstantProperty(Cartesian2.UNIT_Y);
+        var scale = new ConstantProperty(2);
+        var show = new ConstantProperty(true);
+        var translucencyByDistance = new ConstantProperty(new NearFarScalar());
+        var pixelOffsetScaleByDistance = new ConstantProperty(new NearFarScalar());
 
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicLabel.processCzmlPacket(dynamicObject, labelPacket)).toEqual(true);
-        expect(dynamicObject.label).toBeDefined();
-        expect(dynamicObject.label.text.getValue(validTime)).toEqual(labelPacket.label.text);
-        expect(dynamicObject.label.font.getValue(validTime)).toEqual(labelPacket.label.font);
-        expect(dynamicObject.label.style.getValue(validTime)).toEqual(LabelStyle.FILL);
-        expect(dynamicObject.label.fillColor.getValue(validTime)).toEqual(new Color(0.1, 0.1, 0.1, 0.1));
-        expect(dynamicObject.label.outlineColor.getValue(validTime)).toEqual(new Color(0.2, 0.2, 0.2, 0.2));
-        expect(dynamicObject.label.outlineWidth.getValue(validTime)).toEqual(labelPacket.label.outlineWidth);
-        expect(dynamicObject.label.horizontalOrigin.getValue(validTime)).toEqual(HorizontalOrigin.LEFT);
-        expect(dynamicObject.label.verticalOrigin.getValue(validTime)).toEqual(VerticalOrigin.CENTER);
-        expect(dynamicObject.label.eyeOffset.getValue(validTime)).toEqual(new Cartesian3(1.0, 2.0, 3.0));
-        expect(dynamicObject.label.pixelOffset.getValue(validTime)).toEqual(new Cartesian2(4.0, 5.0));
-        expect(dynamicObject.label.scale.getValue(validTime)).toEqual(labelPacket.label.scale);
-        expect(dynamicObject.label.show.getValue(validTime)).toEqual(labelPacket.label.show);
+        var target = new DynamicLabel();
+        target.text = text;
+        target.font = font;
+        target.style = style;
+        target.fillColor = fillColor;
+        target.outlineColor = outlineColor;
+        target.outlineWidth = outlineWidth;
+        target.horizontalOrigin = horizontalOrigin;
+        target.verticalOrigin = verticalOrigin;
+        target.eyeOffset = eyeOffset;
+        target.pixelOffset = pixelOffset;
+        target.scale = scale;
+        target.show = show;
+        target.translucencyByDistance = translucencyByDistance;
+        target.pixelOffsetScaleByDistance = pixelOffsetScaleByDistance;
 
-        expect(dynamicObject.label.text.getValue(invalidTime)).toBeUndefined();
-        expect(dynamicObject.label.font.getValue(invalidTime)).toBeUndefined();
-        expect(dynamicObject.label.style.getValue(invalidTime)).toBeUndefined();
-        expect(dynamicObject.label.fillColor.getValue(invalidTime)).toBeUndefined();
-        expect(dynamicObject.label.outlineColor.getValue(invalidTime)).toBeUndefined();
-        expect(dynamicObject.label.outlineWidth.getValue(invalidTime)).toBeUndefined();
-        expect(dynamicObject.label.horizontalOrigin.getValue(invalidTime)).toBeUndefined();
-        expect(dynamicObject.label.verticalOrigin.getValue(invalidTime)).toBeUndefined();
-        expect(dynamicObject.label.eyeOffset.getValue(invalidTime)).toBeUndefined();
-        expect(dynamicObject.label.pixelOffset.getValue(invalidTime)).toBeUndefined();
-        expect(dynamicObject.label.scale.getValue(invalidTime)).toBeUndefined();
-        expect(dynamicObject.label.show.getValue(invalidTime)).toBeUndefined();
+        target.merge(source);
+
+        expect(target.text).toBe(text);
+        expect(target.font).toBe(font);
+        expect(target.style).toBe(style);
+        expect(target.fillColor).toBe(fillColor);
+        expect(target.outlineColor).toBe(outlineColor);
+        expect(target.outlineWidth).toBe(outlineWidth);
+        expect(target.horizontalOrigin).toBe(horizontalOrigin);
+        expect(target.verticalOrigin).toBe(verticalOrigin);
+        expect(target.eyeOffset).toBe(eyeOffset);
+        expect(target.pixelOffset).toBe(pixelOffset);
+        expect(target.scale).toBe(scale);
+        expect(target.show).toBe(show);
+        expect(target.translucencyByDistance).toBe(translucencyByDistance);
+        expect(target.pixelOffsetScaleByDistance).toBe(pixelOffsetScaleByDistance);
     });
 
-    it('processCzmlPacket returns false if no data.', function() {
-        var packet = {};
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicLabel.processCzmlPacket(dynamicObject, packet)).toEqual(false);
-        expect(dynamicObject.label).toBeUndefined();
+    it('clone works', function() {
+        var source = new DynamicLabel();
+        source.text = new ConstantProperty('not it');
+        source.font = new ConstantProperty('arial');
+        source.style = new ConstantProperty(LabelStyle.FILL);
+        source.fillColor = new ConstantProperty(Color.BLACK);
+        source.outlineColor = new ConstantProperty(Color.BLUE);
+        source.outlineWidth = new ConstantProperty(5);
+        source.horizontalOrigin = new ConstantProperty(HorizontalOrigin.LEFT);
+        source.verticalOrigin = new ConstantProperty(VerticalOrigin.BOTTOM);
+        source.eyeOffset = new ConstantProperty(Cartesian3.UNIT_Y);
+        source.pixelOffset = new ConstantProperty(Cartesian2.UNIT_X);
+        source.scale = new ConstantProperty(1);
+        source.show = new ConstantProperty(false);
+        source.translucencyByDistance = new ConstantProperty(new NearFarScalar());
+        source.pixelOffsetScaleByDistance = new ConstantProperty(new NearFarScalar(1.0, 0.0, 3.0e9, 0.0));
+
+        var result = source.clone();
+        expect(result.text).toBe(source.text);
+        expect(result.font).toBe(source.font);
+        expect(result.style).toBe(source.style);
+        expect(result.fillColor).toBe(source.fillColor);
+        expect(result.outlineColor).toBe(source.outlineColor);
+        expect(result.outlineWidth).toBe(source.outlineWidth);
+        expect(result.horizontalOrigin).toBe(source.horizontalOrigin);
+        expect(result.verticalOrigin).toBe(source.verticalOrigin);
+        expect(result.eyeOffset).toBe(source.eyeOffset);
+        expect(result.pixelOffset).toBe(source.pixelOffset);
+        expect(result.scale).toBe(source.scale);
+        expect(result.show).toBe(source.show);
+        expect(result.translucencyByDistance).toBe(source.translucencyByDistance);
+        expect(result.pixelOffsetScaleByDistance).toBe(source.pixelOffsetScaleByDistance);
     });
 
-    it('mergeProperties does not change a fully configured label', function() {
-        var expectedText = new MockProperty();
-        var expectedFont = new MockProperty();
-        var expectedStyle = new MockProperty();
-        var expectedFillColor = new MockProperty();
-        var expectedOutlineColor = new MockProperty();
-        var expectedOutlineWidth = new MockProperty();
-        var expectedHorizontalOrigin = new MockProperty();
-        var expectedVerticalOrigin = new MockProperty();
-        var expectedEyeOffset = new MockProperty();
-        var expectedPixelOffset = new MockProperty();
-        var expectedScale = new MockProperty();
-        var expectedShow = new MockProperty();
-
-        var objectToMerge = new DynamicObject('objectToMerge');
-        objectToMerge.label = new DynamicLabel();
-        objectToMerge.label.text = new MockProperty();
-        objectToMerge.label.font = new MockProperty();
-        objectToMerge.label.style = new MockProperty();
-        objectToMerge.label.fillColor = new MockProperty();
-        objectToMerge.label.outlineColor = new MockProperty();
-        objectToMerge.label.outlineWidth = new MockProperty();
-        objectToMerge.label.horizontalOrigin = new MockProperty();
-        objectToMerge.label.verticalOrigin = new MockProperty();
-        objectToMerge.label.eyeOffset = new MockProperty();
-        objectToMerge.label.pixelOffset = new MockProperty();
-        objectToMerge.label.scale = new MockProperty();
-        objectToMerge.label.show = new MockProperty();
-
-        var targetObject = new DynamicObject('targetObject');
-        targetObject.label = new DynamicLabel();
-        targetObject.label.text = expectedText;
-        targetObject.label.font = expectedFont;
-        targetObject.label.style = expectedStyle;
-        targetObject.label.fillColor = expectedFillColor;
-        targetObject.label.outlineColor = expectedOutlineColor;
-        targetObject.label.outlineWidth = expectedOutlineWidth;
-        targetObject.label.horizontalOrigin = expectedHorizontalOrigin;
-        targetObject.label.verticalOrigin = expectedVerticalOrigin;
-        targetObject.label.eyeOffset = expectedEyeOffset;
-        targetObject.label.pixelOffset = expectedPixelOffset;
-        targetObject.label.scale = expectedScale;
-        targetObject.label.show = expectedShow;
-
-        DynamicLabel.mergeProperties(targetObject, objectToMerge);
-
-        expect(targetObject.label.text).toEqual(expectedText);
-        expect(targetObject.label.font).toEqual(expectedFont);
-        expect(targetObject.label.style).toEqual(expectedStyle);
-        expect(targetObject.label.fillColor).toEqual(expectedFillColor);
-        expect(targetObject.label.outlineColor).toEqual(expectedOutlineColor);
-        expect(targetObject.label.outlineWidth).toEqual(expectedOutlineWidth);
-        expect(targetObject.label.horizontalOrigin).toEqual(expectedHorizontalOrigin);
-        expect(targetObject.label.verticalOrigin).toEqual(expectedVerticalOrigin);
-        expect(targetObject.label.eyeOffset).toEqual(expectedEyeOffset);
-        expect(targetObject.label.pixelOffset).toEqual(expectedPixelOffset);
-        expect(targetObject.label.scale).toEqual(expectedScale);
-        expect(targetObject.label.show).toEqual(expectedShow);
-    });
-
-    it('mergeProperties creates and configures an undefined label', function() {
-        var objectToMerge = new DynamicObject('objectToMerge');
-        objectToMerge.label = new DynamicLabel();
-        objectToMerge.label.text = new MockProperty();
-        objectToMerge.label.font = new MockProperty();
-        objectToMerge.label.style = new MockProperty();
-        objectToMerge.label.fillColor = new MockProperty();
-        objectToMerge.label.outlineColor = new MockProperty();
-        objectToMerge.label.outlineWidth = new MockProperty();
-        objectToMerge.label.horizontalOrigin = new MockProperty();
-        objectToMerge.label.verticalOrigin = new MockProperty();
-        objectToMerge.label.eyeOffset = new MockProperty();
-        objectToMerge.label.pixelOffset = new MockProperty();
-        objectToMerge.label.scale = new MockProperty();
-        objectToMerge.label.show = new MockProperty();
-
-        var targetObject = new DynamicObject('targetObject');
-
-        DynamicLabel.mergeProperties(targetObject, objectToMerge);
-
-        expect(targetObject.label.text).toEqual(objectToMerge.label.text);
-        expect(targetObject.label.font).toEqual(objectToMerge.label.font);
-        expect(targetObject.label.style).toEqual(objectToMerge.label.style);
-        expect(targetObject.label.fillColor).toEqual(objectToMerge.label.fillColor);
-        expect(targetObject.label.outlineColor).toEqual(objectToMerge.label.outlineColor);
-        expect(targetObject.label.outlineWidth).toEqual(objectToMerge.label.outlineWidth);
-        expect(targetObject.label.horizontalOrigin).toEqual(objectToMerge.label.horizontalOrigin);
-        expect(targetObject.label.verticalOrigin).toEqual(objectToMerge.label.verticalOrigin);
-        expect(targetObject.label.eyeOffset).toEqual(objectToMerge.label.eyeOffset);
-        expect(targetObject.label.pixelOffset).toEqual(objectToMerge.label.pixelOffset);
-        expect(targetObject.label.scale).toEqual(objectToMerge.label.scale);
-        expect(targetObject.label.show).toEqual(objectToMerge.label.show);
-    });
-
-    it('mergeProperties does not change when used with an undefined label', function() {
-        var expectedText = new MockProperty();
-        var expectedFont = new MockProperty();
-        var expectedStyle = new MockProperty();
-        var expectedFillColor = new MockProperty();
-        var expectedOutlineColor = new MockProperty();
-        var expectedOutlineWidth = new MockProperty();
-        var expectedHorizontalOrigin = new MockProperty();
-        var expectedVerticalOrigin = new MockProperty();
-        var expectedEyeOffset = new MockProperty();
-        var expectedPixelOffset = new MockProperty();
-        var expectedScale = new MockProperty();
-        var expectedShow = new MockProperty();
-
-        var objectToMerge = new DynamicObject('objectToMerge');
-
-        var targetObject = new DynamicObject('targetObject');
-        targetObject.label = new DynamicLabel();
-        targetObject.label.text = expectedText;
-        targetObject.label.font = expectedFont;
-        targetObject.label.style = expectedStyle;
-        targetObject.label.fillColor = expectedFillColor;
-        targetObject.label.outlineColor = expectedOutlineColor;
-        targetObject.label.outlineWidth = expectedOutlineWidth;
-        targetObject.label.horizontalOrigin = expectedHorizontalOrigin;
-        targetObject.label.verticalOrigin = expectedVerticalOrigin;
-        targetObject.label.eyeOffset = expectedEyeOffset;
-        targetObject.label.pixelOffset = expectedPixelOffset;
-        targetObject.label.scale = expectedScale;
-        targetObject.label.show = expectedShow;
-
-        DynamicLabel.mergeProperties(targetObject, objectToMerge);
-
-        expect(targetObject.label.text).toEqual(expectedText);
-        expect(targetObject.label.font).toEqual(expectedFont);
-        expect(targetObject.label.style).toEqual(expectedStyle);
-        expect(targetObject.label.fillColor).toEqual(expectedFillColor);
-        expect(targetObject.label.outlineColor).toEqual(expectedOutlineColor);
-        expect(targetObject.label.outlineWidth).toEqual(expectedOutlineWidth);
-        expect(targetObject.label.horizontalOrigin).toEqual(expectedHorizontalOrigin);
-        expect(targetObject.label.verticalOrigin).toEqual(expectedVerticalOrigin);
-        expect(targetObject.label.eyeOffset).toEqual(expectedEyeOffset);
-        expect(targetObject.label.pixelOffset).toEqual(expectedPixelOffset);
-        expect(targetObject.label.scale).toEqual(expectedScale);
-        expect(targetObject.label.show).toEqual(expectedShow);
-    });
-
-    it('undefineProperties works', function() {
-        var testObject = new DynamicObject('testObject');
-        testObject.label = new DynamicLabel();
-        DynamicLabel.undefineProperties(testObject);
-        expect(testObject.label).toBeUndefined();
+    it('merge throws if source undefined', function() {
+        var target = new DynamicLabel();
+        expect(function() {
+            target.merge(undefined);
+        }).toThrowDeveloperError();
     });
 });

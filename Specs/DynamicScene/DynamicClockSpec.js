@@ -16,128 +16,82 @@ defineSuite([
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
-    var clockPacket = {
-        clock : {
-            interval : '2012-03-15T10:00:00Z/2012-03-16T10:00:00Z',
-            currentTime : '2012-03-15T10:00:00Z',
-            multiplier : 60.0,
-            range : 'LOOP_STOP',
-            step : 'SYSTEM_CLOCK_MULTIPLIER'
-        }
-    };
+    it('merge assigns unassigned properties', function() {
+        var source = new DynamicClock();
+        source.startTime = new JulianDate();
+        source.stopTime = new JulianDate();
+        source.currentTime = new JulianDate();
+        source.clockRange = ClockRange.CLAMPED;
+        source.clockStep = ClockStep.TICK_DEPENDENT;
+        source.multiplier = 1;
 
-    var interval = TimeInterval.fromIso8601(clockPacket.clock.interval);
-    var currentTime = JulianDate.fromIso8601(clockPacket.clock.currentTime);
-    var multiplier = clockPacket.clock.multiplier;
-    var range = ClockRange[clockPacket.clock.range];
-    var step = ClockStep[clockPacket.clock.step];
+        var target = new DynamicClock();
+        target.merge(source);
 
-    it('processCzmlPacket adds clock data.', function() {
-        var dynamicObject = new DynamicObject('document');
-        expect(DynamicClock.processCzmlPacket(dynamicObject, clockPacket)).toEqual(true);
-        expect(dynamicObject.clock).toBeDefined();
-        expect(dynamicObject.clock.startTime).toEqual(interval.start);
-        expect(dynamicObject.clock.stopTime).toEqual(interval.stop);
-        expect(dynamicObject.clock.currentTime).toEqual(currentTime);
-        expect(dynamicObject.clock.clockRange).toEqual(range);
-        expect(dynamicObject.clock.clockStep).toEqual(step);
-        expect(dynamicObject.clock.multiplier).toEqual(multiplier);
+        expect(target.startTime).toBe(source.startTime);
+        expect(target.stopTime).toBe(source.stopTime);
+        expect(target.currentTime).toBe(source.currentTime);
+        expect(target.clockRange).toBe(source.clockRange);
+        expect(target.clockStep).toBe(source.clockStep);
+        expect(target.multiplier).toBe(source.multiplier);
     });
 
-    it('processCzmlPacket only adds data on the document.', function() {
-        var clockPacket = {
-            clock : {
-                interval : "2012-03-15T10:00:00Z/2012-03-16T10:00:00Z",
-                currentTime : "2012-03-15T10:00:00Z",
-                multiplier : 60.0,
-                range : "LOOP_STOP",
-                step : "SYSTEM_CLOCK_MULTIPLIER"
-            }
-        };
+    it('merge does not assign assigned properties', function() {
+        var source = new DynamicClock();
+        source.startTime = new JulianDate();
+        source.stopTime = new JulianDate();
+        source.currentTime = new JulianDate();
+        source.clockRange = ClockRange.CLAMPED;
+        source.clockStep = ClockStep.TICK_DEPENDENT;
+        source.multiplier = 1;
 
-        var documentObject = new DynamicObject('document');
-        var dynamicObject = new DynamicObject('notTheDocument');
-        expect(DynamicClock.processCzmlPacket(dynamicObject, clockPacket)).toEqual(false);
-        expect(dynamicObject.clock).toBeUndefined();
-        expect(DynamicClock.processCzmlPacket(documentObject, clockPacket)).toEqual(true);
-        expect(documentObject.clock).toBeDefined();
+        var startTime = new JulianDate();
+        var stopTime = new JulianDate();
+        var currentTime = new JulianDate();
+        var clockRange = ClockRange.CLAMPED;
+        var clockStep = ClockStep.TICK_DEPENDENT;
+        var multiplier = 1;
+
+        var target = new DynamicClock();
+        target.startTime = startTime;
+        target.stopTime = stopTime;
+        target.currentTime = currentTime;
+        target.clockRange = clockRange;
+        target.clockStep = clockStep;
+        target.multiplier = multiplier;
+
+        target.merge(source);
+
+        expect(target.startTime).toBe(startTime);
+        expect(target.stopTime).toBe(stopTime);
+        expect(target.currentTime).toBe(currentTime);
+        expect(target.clockRange).toBe(clockRange);
+        expect(target.clockStep).toBe(clockStep);
+        expect(target.multiplier).toBe(multiplier);
     });
 
-    it('processCzmlPacket returns false if no data.', function() {
-        var packet = {};
-        var dynamicObject = new DynamicObject('document');
-        expect(DynamicClock.processCzmlPacket(dynamicObject, packet)).toEqual(false);
-        expect(dynamicObject.clock).toBeUndefined();
+    it('clone works', function() {
+        var source = new DynamicClock();
+        source.startTime = new JulianDate();
+        source.stopTime = new JulianDate();
+        source.currentTime = new JulianDate();
+        source.clockRange = ClockRange.CLAMPED;
+        source.clockStep = ClockStep.TICK_DEPENDENT;
+        source.multiplier = 1;
+
+        var result = source.clone();
+        expect(result.startTime).toBe(source.startTime);
+        expect(result.stopTime).toBe(source.stopTime);
+        expect(result.currentTime).toBe(source.currentTime);
+        expect(result.clockRange).toBe(source.clockRange);
+        expect(result.clockStep).toBe(source.clockStep);
+        expect(result.multiplier).toBe(source.multiplier);
     });
 
-    it('mergeProperties creates a clock', function() {
-        var objectToMerge = new DynamicObject('document');
-        DynamicClock.processCzmlPacket(objectToMerge, clockPacket);
-
-        var targetObject = new DynamicObject('targetObject');
-        DynamicClock.mergeProperties(targetObject, objectToMerge);
-        expect(targetObject.clock).toBeDefined();
-
-        expect(targetObject.clock.startTime).toEqual(objectToMerge.clock.startTime);
-        expect(targetObject.clock.stopTime).toEqual(objectToMerge.clock.stopTime);
-        expect(targetObject.clock.currentTime).toEqual(objectToMerge.clock.currentTime);
-        expect(targetObject.clock.clockRange).toEqual(objectToMerge.clock.clockRange);
-        expect(targetObject.clock.clockStep).toEqual(objectToMerge.clock.clockStep);
-        expect(targetObject.clock.multiplier).toEqual(objectToMerge.clock.multiplier);
-    });
-
-    it('mergeProperties does not overwrite the target clock if the merging object clock is undefined', function() {
-        var objectToMerge = new DynamicObject('document');
-
-        var targetObject = new DynamicObject('document');
-        DynamicClock.processCzmlPacket(targetObject, clockPacket);
-
-        DynamicClock.mergeProperties(targetObject, objectToMerge);
-        expect(targetObject.clock).toBeDefined();
-        expect(targetObject.clock.startTime).toEqual(interval.start);
-        expect(targetObject.clock.stopTime).toEqual(interval.stop);
-        expect(targetObject.clock.currentTime).toEqual(currentTime);
-        expect(targetObject.clock.clockRange).toEqual(range);
-        expect(targetObject.clock.clockStep).toEqual(step);
-        expect(targetObject.clock.multiplier).toEqual(multiplier);
-    });
-
-    it('mergeProperties always overwrites the target clock with mergeObject clock if it has one', function() {
-        var objectToMerge = new DynamicObject('document');
-        DynamicClock.processCzmlPacket(objectToMerge, clockPacket);
-
-        var targetObject = new DynamicObject('document');
-        var clockPacket2 = {
-            clock : {
-                interval : '2013-03-15T10:00:00Z/2014-03-16T10:00:00Z',
-                currentTime : '2013-03-15T10:00:00Z',
-                multiplier : 65.0,
-                range : 'CLAMPED',
-                step : 'SYSTEM_CLOCK'
-            }
-        };
-
-        DynamicClock.processCzmlPacket(targetObject, clockPacket2);
-        expect(targetObject.clock.startTime).toNotEqual(objectToMerge.clock.startTime);
-        expect(targetObject.clock.stopTime).toNotEqual(objectToMerge.clock.stopTime);
-        expect(targetObject.clock.currentTime).toNotEqual(objectToMerge.clock.currentTime);
-        expect(targetObject.clock.clockRange).toNotEqual(objectToMerge.clock.clockRange);
-        expect(targetObject.clock.clockStep).toNotEqual(objectToMerge.clock.clockStep);
-        expect(targetObject.clock.multiplier).toNotEqual(objectToMerge.clock.multiplier);
-
-        DynamicClock.mergeProperties(targetObject, objectToMerge);
-        expect(targetObject.clock.startTime).toEqual(objectToMerge.clock.startTime);
-        expect(targetObject.clock.stopTime).toEqual(objectToMerge.clock.stopTime);
-        expect(targetObject.clock.currentTime).toEqual(objectToMerge.clock.currentTime);
-        expect(targetObject.clock.clockRange).toEqual(objectToMerge.clock.clockRange);
-        expect(targetObject.clock.clockStep).toEqual(objectToMerge.clock.clockStep);
-        expect(targetObject.clock.multiplier).toEqual(objectToMerge.clock.multiplier);
-    });
-
-    it('undefineProperties works', function() {
-        var testObject = new DynamicObject('testObject');
-        testObject.clock = new DynamicClock();
-        DynamicClock.undefineProperties(testObject);
-        expect(testObject.clock).toBeUndefined();
+    it('merge throws if source undefined', function() {
+        var target = new DynamicClock();
+        expect(function() {
+            target.merge(undefined);
+        }).toThrowDeveloperError();
     });
 });

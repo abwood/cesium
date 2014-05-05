@@ -1,6 +1,7 @@
 /*global defineSuite*/
 defineSuite([
          'Core/Simon1994PlanetaryPositions',
+         'Core/defined',
          'Core/JulianDate',
          'Core/TimeStandard',
          'Core/Math',
@@ -8,6 +9,7 @@ defineSuite([
          'Core/Transforms'
      ], function(
          PlanetaryPositions,
+         defined,
          JulianDate,
          TimeStandard,
          CesiumMath,
@@ -25,27 +27,27 @@ defineSuite([
         var X = 26500268539.790234;
         var Y = -132756447253.27325;
         var Z = -57556483362.533806;
-        expect(X).toEqualEpsilon(sun.x, CesiumMath.EPSILON4); //TODO
-        expect(Y).toEqualEpsilon(sun.y, CesiumMath.EPSILON4);
-        expect(Z).toEqualEpsilon(sun.z, CesiumMath.EPSILON4);
+        expect(X).toEqualEpsilon(sun.x, CesiumMath.EPSILON2);
+        expect(Y).toEqualEpsilon(sun.y, CesiumMath.EPSILON2);
+        expect(Z).toEqualEpsilon(sun.z, CesiumMath.EPSILON2);
 
         date = JulianDate.fromTotalDays(2456401.5, TimeStandard.TAI);
         sun = PlanetaryPositions.ComputeSunPositionInEarthInertialFrame(date);
         X = 131512388940.33589;
         Y = 66661342667.949928;
         Z = 28897975607.905258;
-        expect(X).toEqualEpsilon(sun.x, CesiumMath.EPSILON4);
-        expect(Y).toEqualEpsilon(sun.y, CesiumMath.EPSILON4);
-        expect(Z).toEqualEpsilon(sun.z, CesiumMath.EPSILON4);
+        expect(X).toEqualEpsilon(sun.x, CesiumMath.EPSILON3);
+        expect(Y).toEqualEpsilon(sun.y, CesiumMath.EPSILON3);
+        expect(Z).toEqualEpsilon(sun.z, CesiumMath.EPSILON3);
 
         date = JulianDate.fromTotalDays(2455998.591667, TimeStandard.TAI);
         sun = PlanetaryPositions.ComputeSunPositionInEarthInertialFrame(date);
         X = 147109989956.19534;
         Y = -19599996881.217579;
         Z = -8497578102.7696457;
-        expect(X).toEqualEpsilon(sun.x, CesiumMath.EPSILON4);
-        expect(Y).toEqualEpsilon(sun.y, CesiumMath.EPSILON4);
-        expect(Z).toEqualEpsilon(sun.z, CesiumMath.EPSILON4);
+        expect(X).toEqualEpsilon(sun.x, CesiumMath.EPSILON3);
+        expect(Y).toEqualEpsilon(sun.y, CesiumMath.EPSILON3);
+        expect(Z).toEqualEpsilon(sun.z, CesiumMath.EPSILON3);
     });
 
     // Values for X Y and Z were found using the STK Components GeometryTransformer on the Simon 1994 moon point and the earth
@@ -91,11 +93,11 @@ defineSuite([
         var angles = [];
         for (i = 0; i < 24; i++) {
             transformMatrix = Transforms.computeIcrfToFixedMatrix(timesOfDay[i], transformMatrix);
-            if (typeof transformMatrix === 'undefined') {
+            if (!defined(transformMatrix)) {
                 transformMatrix = Transforms.computeTemeToPseudoFixedMatrix(timesOfDay[i], transformMatrix);
             }
             var position = PlanetaryPositions.ComputeSunPositionInEarthInertialFrame(timesOfDay[i]);
-            transformMatrix.multiplyByVector(position, position);
+            Matrix3.multiplyByVector(transformMatrix, position, position);
             angles.push(CesiumMath.convertLongitudeRange(Math.atan2(position.y, position.x)));
         }
         //Expect a clockwise motion.

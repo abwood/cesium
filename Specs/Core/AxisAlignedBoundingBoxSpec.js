@@ -116,44 +116,44 @@ defineSuite([
     });
 
     it('intersect works with box on the positive side of a plane', function() {
-        var box = new AxisAlignedBoundingBox(Cartesian3.UNIT_X.negate(), Cartesian3.ZERO);
-        var normal = Cartesian3.UNIT_X.negate();
+        var box = new AxisAlignedBoundingBox(Cartesian3.negate(Cartesian3.UNIT_X), Cartesian3.ZERO);
+        var normal = Cartesian3.negate(Cartesian3.UNIT_X);
         var position = Cartesian3.UNIT_X;
-        var plane = new Cartesian4(normal.x, normal.y, normal.z, -normal.dot(position));
+        var plane = new Cartesian4(normal.x, normal.y, normal.z, -Cartesian3.dot(normal, position));
         expect(box.intersect(plane)).toEqual(Intersect.INSIDE);
     });
 
     it('intersect works with box on the negative side of a plane', function() {
-        var box = new AxisAlignedBoundingBox(Cartesian3.UNIT_X.negate(), Cartesian3.ZERO);
+        var box = new AxisAlignedBoundingBox(Cartesian3.negate(Cartesian3.UNIT_X), Cartesian3.ZERO);
         var normal = Cartesian3.UNIT_X;
         var position = Cartesian3.UNIT_X;
-        var plane = new Cartesian4(normal.x, normal.y, normal.z, -normal.dot(position));
+        var plane = new Cartesian4(normal.x, normal.y, normal.z, -Cartesian3.dot(normal, position));
         expect(box.intersect(plane)).toEqual(Intersect.OUTSIDE);
     });
 
     it('intersect works with box intersecting a plane', function() {
-        var box = new AxisAlignedBoundingBox(Cartesian3.ZERO, Cartesian3.UNIT_X.multiplyByScalar(2.0));
+        var box = new AxisAlignedBoundingBox(Cartesian3.ZERO, Cartesian3.multiplyByScalar(Cartesian3.UNIT_X, 2.0));
         var normal = Cartesian3.UNIT_X;
         var position = Cartesian3.UNIT_X;
-        var plane = new Cartesian4(normal.x, normal.y, normal.z, -normal.dot(position));
+        var plane = new Cartesian4(normal.x, normal.y, normal.z, -Cartesian3.dot(normal, position));
         expect(box.intersect(plane)).toEqual(Intersect.INTERSECTING);
     });
 
-    it('static clone returns undefined with no parameter', function() {
-        expect(typeof AxisAlignedBoundingBox.clone()).toEqual('undefined');
+    it('clone returns undefined with no parameter', function() {
+        expect(AxisAlignedBoundingBox.clone()).toBeUndefined();
     });
 
-    it('static intersect throws without a box', function() {
+    it('intersect throws without a box', function() {
         var plane = new Cartesian4();
         expect(function() {
             AxisAlignedBoundingBox.intersect(undefined, plane);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
-    it('static intersect throws without a plane', function() {
+    it('intersect throws without a plane', function() {
         var box = new AxisAlignedBoundingBox();
         expect(function() {
             AxisAlignedBoundingBox.intersect(box, undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 });

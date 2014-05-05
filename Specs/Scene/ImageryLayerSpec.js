@@ -3,29 +3,35 @@ defineSuite([
          'Scene/ImageryLayer',
          'Specs/createContext',
          'Specs/destroyContext',
-         'Core/Extent',
+         'Core/Rectangle',
          'Core/jsonp',
          'Core/loadImage',
          'Core/loadWithXhr',
          'Scene/BingMapsImageryProvider',
+         'Scene/EllipsoidTerrainProvider',
          'Scene/Imagery',
+         'Scene/ImageryLayerCollection',
          'Scene/ImageryState',
          'Scene/NeverTileDiscardPolicy',
          'Scene/SingleTileImageryProvider',
+         'Scene/TileMapServiceImageryProvider',
          'Scene/WebMapServiceImageryProvider'
      ], function(
          ImageryLayer,
          createContext,
          destroyContext,
-         Extent,
+         Rectangle,
          jsonp,
          loadImage,
          loadWithXhr,
          BingMapsImageryProvider,
+         EllipsoidTerrainProvider,
          Imagery,
+         ImageryLayerCollection,
          ImageryState,
          NeverTileDiscardPolicy,
          SingleTileImageryProvider,
+         TileMapServiceImageryProvider,
          WebMapServiceImageryProvider) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
@@ -63,8 +69,8 @@ defineSuite([
             return loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
         };
 
-        loadWithXhr.load = function(url, responseType, headers, deferred) {
-            return loadWithXhr.defaultLoad('Data/Images/Red16x16.png', responseType, headers, deferred);
+        loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
+            return loadWithXhr.defaultLoad('Data/Images/Red16x16.png', responseType, method, data, headers, deferred);
         };
 
         var discardPolicy = new CustomDiscardPolicy();
@@ -78,7 +84,7 @@ defineSuite([
         var layer = new ImageryLayer(provider);
 
         waitsFor(function() {
-            return provider.isReady();
+            return provider.ready;
         }, 'imagery provider to become ready');
 
         var imagery;
@@ -131,8 +137,8 @@ defineSuite([
             return loadImage.defaultCreateImage('Data/Images/Red16x16.png', crossOrigin, deferred);
         };
 
-        loadWithXhr.load = function(url, responseType, headers, deferred) {
-            return loadWithXhr.defaultLoad('Data/Images/Red16x16.png', responseType, headers, deferred);
+        loadWithXhr.load = function(url, responseType, method, data, headers, deferred, overrideMimeType) {
+            return loadWithXhr.defaultLoad('Data/Images/Red16x16.png', responseType, method, data, headers, deferred);
         };
 
         var provider = new BingMapsImageryProvider({
@@ -143,7 +149,7 @@ defineSuite([
         var layer = new ImageryLayer(provider);
 
         waitsFor(function() {
-            return provider.isReady();
+            return provider.ready;
         }, 'imagery provider to become ready');
 
         var imagery;
@@ -186,13 +192,146 @@ defineSuite([
             url : 'Data/Images/Red16x16.png'
         });
 
-        var extent = new Extent(0.1, 0.2, 0.3, 0.4);
+        var rectangle = new Rectangle(0.1, 0.2, 0.3, 0.4);
         var layer = new ImageryLayer(provider, {
-            extent : extent
+            rectangle : rectangle
         });
-        expect(layer.getExtent()).toEqual(extent);
+        expect(layer.rectangle).toEqual(rectangle);
         expect(layer.isDestroyed()).toEqual(false);
         layer.destroy();
         expect(layer.isDestroyed()).toEqual(true);
+    });
+
+    it('createTileImagerySkeletons handles a base layer that does not cover the entire globe', function() {
+        var provider = new TileMapServiceImageryProvider({
+            url : 'Data/TMS/SmallArea'
+        });
+
+        var layers = new ImageryLayerCollection();
+        var layer = layers.addImageryProvider(provider);
+        var terrainProvider = new EllipsoidTerrainProvider();
+
+        waitsFor(function() {
+            return provider.ready && terrainProvider.ready;
+        }, 'imagery provider to become ready');
+
+        runs(function() {
+            var tiles = terrainProvider.tilingScheme.createLevelZeroTiles();
+            layer._createTileImagerySkeletons(tiles[0], terrainProvider);
+            layer._createTileImagerySkeletons(tiles[1], terrainProvider);
+
+            // Both tiles should have imagery from this layer completely covering them.
+            expect(tiles[0].imagery.length).toBe(4);
+            expect(tiles[0].imagery[0].textureCoordinateRectangle.x).toBe(0.0);
+            expect(tiles[0].imagery[0].textureCoordinateRectangle.w).toBe(1.0);
+            expect(tiles[0].imagery[1].textureCoordinateRectangle.x).toBe(0.0);
+            expect(tiles[0].imagery[1].textureCoordinateRectangle.y).toBe(0.0);
+            expect(tiles[0].imagery[2].textureCoordinateRectangle.z).toBe(1.0);
+            expect(tiles[0].imagery[2].textureCoordinateRectangle.w).toBe(1.0);
+            expect(tiles[0].imagery[3].textureCoordinateRectangle.y).toBe(0.0);
+            expect(tiles[0].imagery[3].textureCoordinateRectangle.z).toBe(1.0);
+
+            expect(tiles[1].imagery.length).toBe(2);
+            expect(tiles[1].imagery[0].textureCoordinateRectangle.x).toBe(0.0);
+            expect(tiles[1].imagery[0].textureCoordinateRectangle.w).toBe(1.0);
+            expect(tiles[1].imagery[0].textureCoordinateRectangle.z).toBe(1.0);
+            expect(tiles[1].imagery[1].textureCoordinateRectangle.x).toBe(0.0);
+            expect(tiles[1].imagery[1].textureCoordinateRectangle.y).toBe(0.0);
+            expect(tiles[1].imagery[1].textureCoordinateRectangle.z).toBe(1.0);
+        });
+    });
+
+    it('createTileImagerySkeletons handles a non-base layer that does not cover the entire globe', function() {
+        var baseProvider = new SingleTileImageryProvider({
+            url : 'Data/Images/Green4x4.png'
+        });
+
+        var provider = new TileMapServiceImageryProvider({
+            url : 'Data/TMS/SmallArea'
+        });
+
+        var layers = new ImageryLayerCollection();
+        layers.addImageryProvider(baseProvider);
+        var layer = layers.addImageryProvider(provider);
+        var terrainProvider = new EllipsoidTerrainProvider();
+
+        waitsFor(function() {
+            return provider.ready && terrainProvider.ready;
+        }, 'imagery provider to become ready');
+
+        runs(function() {
+            var tiles = terrainProvider.tilingScheme.createLevelZeroTiles();
+            layer._createTileImagerySkeletons(tiles[0], terrainProvider);
+            layer._createTileImagerySkeletons(tiles[1], terrainProvider);
+
+            // Only the western tile should have imagery from this layer.
+            // And the imagery should not cover it completely.
+            expect(tiles[0].imagery.length).toBe(4);
+            expect(tiles[0].imagery[0].textureCoordinateRectangle.x).not.toBe(0.0);
+            expect(tiles[0].imagery[0].textureCoordinateRectangle.y).not.toBe(0.0);
+            expect(tiles[0].imagery[0].textureCoordinateRectangle.z).not.toBe(1.0);
+            expect(tiles[0].imagery[0].textureCoordinateRectangle.w).not.toBe(1.0);
+            expect(tiles[0].imagery[1].textureCoordinateRectangle.x).not.toBe(0.0);
+            expect(tiles[0].imagery[1].textureCoordinateRectangle.y).not.toBe(0.0);
+            expect(tiles[0].imagery[1].textureCoordinateRectangle.z).not.toBe(1.0);
+            expect(tiles[0].imagery[1].textureCoordinateRectangle.w).not.toBe(1.0);
+            expect(tiles[0].imagery[2].textureCoordinateRectangle.x).not.toBe(0.0);
+            expect(tiles[0].imagery[2].textureCoordinateRectangle.y).not.toBe(0.0);
+            expect(tiles[0].imagery[2].textureCoordinateRectangle.z).not.toBe(1.0);
+            expect(tiles[0].imagery[2].textureCoordinateRectangle.w).not.toBe(1.0);
+            expect(tiles[0].imagery[3].textureCoordinateRectangle.x).not.toBe(0.0);
+            expect(tiles[0].imagery[3].textureCoordinateRectangle.y).not.toBe(0.0);
+            expect(tiles[0].imagery[3].textureCoordinateRectangle.z).not.toBe(1.0);
+            expect(tiles[0].imagery[3].textureCoordinateRectangle.w).not.toBe(1.0);
+
+            expect(tiles[1].imagery.length).toBe(0);
+        });
+    });
+
+    it('createTileImagerySkeletons honors the minimumTerrainLevel and maximumTerrainLevel properties', function() {
+        var provider = new SingleTileImageryProvider({
+            url : 'Data/Images/Green4x4.png'
+        });
+
+        var layer = new ImageryLayer(provider, {
+            minimumTerrainLevel : 2,
+            maximumTerrainLevel : 4
+        });
+
+        var layers = new ImageryLayerCollection();
+        layers.add(layer);
+
+        var terrainProvider = new EllipsoidTerrainProvider();
+
+        waitsFor(function() {
+            return provider.ready && terrainProvider.ready;
+        }, 'imagery provider to become ready');
+
+        runs(function() {
+            var level0 = terrainProvider.tilingScheme.createLevelZeroTiles();
+            var level1 = level0[0].children;
+            var level2 = level1[0].children;
+            var level3 = level2[0].children;
+            var level4 = level3[0].children;
+            var level5 = level4[0].children;
+
+            layer._createTileImagerySkeletons(level0[0], terrainProvider);
+            expect(level0[0].imagery.length).toBe(0);
+
+            layer._createTileImagerySkeletons(level1[0], terrainProvider);
+            expect(level1[0].imagery.length).toBe(0);
+
+            layer._createTileImagerySkeletons(level2[0], terrainProvider);
+            expect(level2[0].imagery.length).toBe(1);
+
+            layer._createTileImagerySkeletons(level3[0], terrainProvider);
+            expect(level3[0].imagery.length).toBe(1);
+
+            layer._createTileImagerySkeletons(level4[0], terrainProvider);
+            expect(level4[0].imagery.length).toBe(1);
+
+            layer._createTileImagerySkeletons(level5[0], terrainProvider);
+            expect(level5[0].imagery.length).toBe(0);
+        });
     });
 }, 'WebGL');

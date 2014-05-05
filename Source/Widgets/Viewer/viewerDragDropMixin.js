@@ -1,26 +1,25 @@
 /*global define*/
 define([
         '../../Core/defaultValue',
+        '../../Core/defined',
         '../../Core/DeveloperError',
         '../../Core/defineProperties',
         '../../Core/Event',
         '../../Core/wrapFunction',
         '../../DynamicScene/CzmlDataSource',
         '../../DynamicScene/GeoJsonDataSource',
-        '../../ThirdParty/when',
         '../getElement'
     ], function(
         defaultValue,
+        defined,
         DeveloperError,
         defineProperties,
         Event,
         wrapFunction,
         CzmlDataSource,
         GeoJsonDataSource,
-        when,
         getElement) {
     "use strict";
-    /*global console*/
 
     /**
      * A mixin which adds default drag and drop support for CZML files to the Viewer widget.
@@ -33,23 +32,23 @@ define([
      * @param {Element|String} [options.dropTarget=viewer.container] The DOM element which will serve as the drop target.
      * @param {Boolean} [options.clearOnDrop=true] When true, dropping files will clear all existing data sources first, when false, new data sources will be loaded after the existing ones.
      *
-     * @exception {DeveloperError} viewer is required.
      * @exception {DeveloperError} Element with id <options.dropTarget> does not exist in the document.
      * @exception {DeveloperError} dropTarget is already defined by another mixin.
      * @exception {DeveloperError} dropEnabled is already defined by another mixin.
-     * @exception {DeveloperError} onDropError is already defined by another mixin.
+     * @exception {DeveloperError} dropError is already defined by another mixin.
      * @exception {DeveloperError} clearOnDrop is already defined by another mixin.
      *
      * @example
      * // Add basic drag and drop support and pop up an alert window on error.
-     * var viewer = new Viewer('cesiumContainer');
-     * viewer.extend(viewerDragDropMixin);
-     * viewer.onDropError.addEventListener(function(viewerArg, source, error) {
+     * var viewer = new Cesium.Viewer('cesiumContainer');
+     * viewer.extend(Cesium.viewerDragDropMixin);
+     * viewer.dropError.addEventListener(function(viewerArg, source, error) {
      *     window.alert('Error processing ' + source + ':' + error);
      * });
      */
     var viewerDragDropMixin = function(viewer, options) {
-        if (typeof viewer === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(viewer)) {
             throw new DeveloperError('viewer is required.');
         }
         if (viewer.hasOwnProperty('dropTarget')) {
@@ -58,18 +57,19 @@ define([
         if (viewer.hasOwnProperty('dropEnabled')) {
             throw new DeveloperError('dropEnabled is already defined by another mixin.');
         }
-        if (viewer.hasOwnProperty('onDropError')) {
-            throw new DeveloperError('onDropError is already defined by another mixin.');
+        if (viewer.hasOwnProperty('dropError')) {
+            throw new DeveloperError('dropError is already defined by another mixin.');
         }
         if (viewer.hasOwnProperty('clearOnDrop')) {
             throw new DeveloperError('clearOnDrop is already defined by another mixin.');
         }
+        //>>includeEnd('debug');
 
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
         //Local variables to be closed over by defineProperties.
         var dropEnabled = true;
-        var onDropError = new Event();
+        var dropError = new Event();
         var clearOnDrop = defaultValue(options.clearOnDrop, true);
         var dropTarget = defaultValue(options.dropTarget, viewer.container);
 
@@ -83,14 +83,16 @@ define([
              */
             dropTarget : {
                 //TODO See https://github.com/AnalyticalGraphicsInc/cesium/issues/832
-                //* @exception {DeveloperError} value is required.
                 get : function() {
                     return dropTarget;
                 },
                 set : function(value) {
-                    if (typeof value === 'undefined') {
+                    //>>includeStart('debug', pragmas.debug);
+                    if (!defined(value)) {
                         throw new DeveloperError('value is required.');
                     }
+                    //>>includeEnd('debug');
+
                     unsubscribe(dropTarget, handleDrop);
                     dropTarget = value;
                     subscribe(dropTarget, handleDrop);
@@ -123,9 +125,9 @@ define([
              * @memberof viewerDragDropMixin.prototype
              * @type {Event}
              */
-            onDropError : {
+            dropError : {
                 get : function() {
-                    return onDropError;
+                    return dropError;
                 }
             },
 
@@ -153,12 +155,12 @@ define([
 
             var files = event.dataTransfer.files;
             var length = files.length;
-            for ( var i = 0; i < length; i++) {
-                var f = files[i];
+            for (var i = 0; i < length; i++) {
+                var file = files[i];
                 var reader = new FileReader();
-                reader.onload = createOnLoadCallback(viewer, f.name, i === 0);
-                reader.onerror = createOnDropErrorCallback(viewer, f.name);
-                reader.readAsText(f);
+                reader.onload = createOnLoadCallback(viewer, file);
+                reader.onerror = createDropErrorCallback(viewer, file);
+                reader.readAsText(file);
             }
         }
 
@@ -181,7 +183,7 @@ define([
 
     function unsubscribe(dropTarget, handleDrop) {
         var currentTarget = dropTarget;
-        if (typeof currentTarget !== 'undefined') {
+        if (defined(currentTarget)) {
             currentTarget.removeEventListener('drop', handleDrop, false);
             currentTarget.removeEventListener('dragenter', stop, false);
             currentTarget.removeEventListener('dragover', stop, false);
@@ -196,52 +198,40 @@ define([
         dropTarget.addEventListener('dragexit', stop, false);
     }
 
-    function endsWith(str, suffix) {
-        var strLength = str.length;
-        var suffixLength = suffix.length;
-        return (suffixLength < strLength) && (str.indexOf(suffix, strLength - suffixLength) !== -1);
-    }
-
-    function createOnLoadCallback(viewer, source, firstTime) {
-        var DataSource;
-        var sourceUpperCase = source.toUpperCase();
-        if (endsWith(sourceUpperCase, ".CZML")) {
-            DataSource = CzmlDataSource;
-        } else if (endsWith(sourceUpperCase, ".GEOJSON") || //
-        endsWith(sourceUpperCase, ".JSON") || //
-        endsWith(sourceUpperCase, ".TOPOJSON")) {
-            DataSource = GeoJsonDataSource;
-        } else {
-            viewer.onDropError.raiseEvent(viewer, source, 'Unrecognized file extension: ' + source);
-        }
-
+    function createOnLoadCallback(viewer, file) {
         return function(evt) {
-            var dataSource = new DataSource();
+            var fileName = file.name;
             try {
-                when(dataSource.load(JSON.parse(evt.target.result), source), function() {
-                    viewer.dataSources.add(dataSource);
-                    if (firstTime) {
-                        var dataClock = dataSource.getClock();
-                        if (typeof dataClock !== 'undefined') {
-                            dataClock.clone(viewer.clock);
-                            if (typeof viewer.timeline !== 'undefined') {
-                                viewer.timeline.updateFromClock();
-                                viewer.timeline.zoomTo(dataClock.startTime, dataClock.stopTime);
-                            }
-                        }
-                    }
-                }, function(error) {
-                    viewer.onDropError.raiseEvent(viewer, source, error);
-                });
+                var dataSource;
+                var loadPromise;
+
+                if (/\.czml$/i.test(fileName)) {
+                    dataSource = new CzmlDataSource(fileName);
+                    dataSource.load(JSON.parse(evt.target.result), fileName);
+                } else if (/\.geojson$/i.test(fileName) || /\.json$/i.test(fileName) || /\.topojson$/i.test(fileName)) {
+                    dataSource = new GeoJsonDataSource(fileName);
+                    loadPromise = dataSource.load(JSON.parse(evt.target.result), fileName);
+                } else {
+                    viewer.dropError.raiseEvent(viewer, fileName, 'Unrecognized file: ' + fileName);
+                    return;
+                }
+
+                viewer.dataSources.add(dataSource);
+
+                if (defined(loadPromise)) {
+                    loadPromise.otherwise(function(error) {
+                        viewer.dropError.raiseEvent(viewer, fileName, error);
+                    });
+                }
             } catch (error) {
-                viewer.onDropError.raiseEvent(viewer, source, error);
+                viewer.dropError.raiseEvent(viewer, fileName, error);
             }
         };
     }
 
-    function createOnDropErrorCallback(viewer, name) {
+    function createDropErrorCallback(viewer, file) {
         return function(evt) {
-            viewer.onDropError.raiseEvent(viewer, name, evt.target.error);
+            viewer.dropError.raiseEvent(viewer, file.name, evt.target.error);
         };
     }
 

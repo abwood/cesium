@@ -1,12 +1,14 @@
 /*global define*/
 define([
         '../Core/defaultValue',
+        '../Core/defined',
         '../Core/loadImageViaBlob',
         '../Core/getImagePixels',
         '../Core/DeveloperError',
         '../ThirdParty/when'
     ], function(
         defaultValue,
+        defined,
         loadImageViaBlob,
         getImagePixels,
         DeveloperError,
@@ -26,18 +28,15 @@ define([
      * @param {Boolean} [description.disableCheckIfAllPixelsAreTransparent=false] If true, the discard check will be disabled
      *                  if all of the pixelsToCheck in the missingImageUrl have an alpha value of 0.  If false, the
      *                  discard check will proceed no matter the values of the pixelsToCheck.
-     *
-     * @exception {DeveloperError} <code>description.missingImageUrl</code> is required.
-     * @exception {DeveloperError} <code>pixelsToCheck</code> is required.
      */
     var DiscardMissingTileImagePolicy = function(description) {
-        description = defaultValue(description, {});
+        description = defaultValue(description, defaultValue.EMPTY_OBJECT);
 
-        if (typeof description.missingImageUrl === 'undefined') {
+        if (!defined(description.missingImageUrl)) {
             throw new DeveloperError('description.missingImageUrl is required.');
         }
 
-        if (typeof description.pixelsToCheck === 'undefined') {
+        if (!defined(description.pixelsToCheck)) {
             throw new DeveloperError('description.pixelsToCheck is required.');
         }
 
@@ -49,7 +48,7 @@ define([
         var that = this;
 
         function success(image) {
-            if (typeof image.blob !== 'undefined') {
+            if (defined(image.blob)) {
                 that._missingImageByteLength = image.blob.size;
             }
 
@@ -115,11 +114,11 @@ define([
         var missingImagePixels = this._missingImagePixels;
 
         // If missingImagePixels is undefined, it indicates that the discard check has been disabled.
-        if (typeof missingImagePixels === 'undefined') {
+        if (!defined(missingImagePixels)) {
             return false;
         }
 
-        if (typeof image.blob !== 'undefined' && image.blob.size !== this._missingImageByteLength) {
+        if (defined(image.blob) && image.blob.size !== this._missingImageByteLength) {
             return false;
         }
 

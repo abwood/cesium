@@ -5,6 +5,7 @@ defineSuite(['Core/EarthOrientationParameters',
              'Core/Cartesian2',
              'Core/Cartesian3',
              'Core/Cartesian4',
+             'Core/defined',
              'Core/Ellipsoid',
              'Core/JulianDate',
              'Core/LeapSecond',
@@ -24,6 +25,7 @@ defineSuite(['Core/EarthOrientationParameters',
              Cartesian2,
              Cartesian3,
              Cartesian4,
+             defined,
              Ellipsoid,
              JulianDate,
              LeapSecond,
@@ -42,11 +44,11 @@ defineSuite(['Core/EarthOrientationParameters',
     var officialLeapSeconds;
 
     beforeAll(function() {
-        officialLeapSeconds = LeapSecond.getLeapSeconds().slice(0);
+        officialLeapSeconds = LeapSecond.leapSeconds.slice(0);
     });
 
     afterEach(function() {
-        LeapSecond.setLeapSeconds(officialLeapSeconds.slice(0));
+        LeapSecond.leapSeconds = officialLeapSeconds.slice(0);
     });
 
     it('adds leap seconds found in the data by default', function() {
@@ -69,7 +71,7 @@ defineSuite(['Core/EarthOrientationParameters',
         });
         expect(eop).not.toBeNull();
 
-        var leapSeconds = LeapSecond.getLeapSeconds();
+        var leapSeconds = LeapSecond.leapSeconds;
         expect(leapSeconds.length).toBe(officialLeapSeconds.length + 1);
 
         var newDate = new JulianDate(2455799.5, 34.5, TimeStandard.TAI);
@@ -82,7 +84,7 @@ defineSuite(['Core/EarthOrientationParameters',
                 foundNew = true;
             }
 
-            if (typeof previousDate !== 'undefined') {
+            if (defined(previousDate)) {
                 expect(JulianDate.compare(previousDate, leapSecond.julianDate)).toBeLessThan(0);
             }
 
@@ -113,7 +115,7 @@ defineSuite(['Core/EarthOrientationParameters',
         });
         expect(eop).not.toBeNull();
 
-        var leapSeconds = LeapSecond.getLeapSeconds();
+        var leapSeconds = LeapSecond.leapSeconds;
         expect(leapSeconds.length).toBe(officialLeapSeconds.length);
     });
 

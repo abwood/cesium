@@ -3,11 +3,13 @@ defineSuite([
          'Scene/HeightmapTerrainData',
          'Scene/GeographicTilingScheme',
          'Scene/TerrainData',
+         'Core/defined',
          'ThirdParty/when'
      ], function(
          HeightmapTerrainData,
          GeographicTilingScheme,
          TerrainData,
+         defined,
          when) {
      "use strict";
      /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
@@ -20,14 +22,14 @@ defineSuite([
          it('requires buffer', function() {
              expect(function() {
                  return new HeightmapTerrainData();
-             }).toThrow();
+             }).toThrowDeveloperError();
 
              expect(function() {
                  return new HeightmapTerrainData({
                      width : 5,
                      height : 5
                  });
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('requires width', function() {
@@ -36,7 +38,7 @@ defineSuite([
                      buffer : new Float32Array(25),
                      height : 5
                  });
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('requires height', function() {
@@ -45,7 +47,7 @@ defineSuite([
                      buffer : new Float32Array(25),
                      width : 5
                  });
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
      });
 
@@ -65,25 +67,25 @@ defineSuite([
          it('requires tilingScheme', function() {
              expect(function() {
                  data.createMesh(undefined, 0, 0, 0);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('requires x', function() {
              expect(function() {
                  data.createMesh(tilingScheme, undefined, 0, 0);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('requires y', function() {
              expect(function() {
                  data.createMesh(tilingScheme, 0, undefined, 0);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('requires level', function() {
              expect(function() {
                  data.createMesh(tilingScheme, 0, 0, undefined);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
      });
 
@@ -103,49 +105,49 @@ defineSuite([
          it('requires tilingScheme', function() {
              expect(function() {
                  data.upsample(undefined, 0, 0, 0, 0, 0, 0);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('requires thisX', function() {
              expect(function() {
                  data.upsample(tilingScheme, undefined, 0, 0, 0, 0, 0);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('requires thisY', function() {
              expect(function() {
                  data.upsample(tilingScheme, 0, undefined, 0, 0, 0, 0);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('requires thisLevel', function() {
              expect(function() {
                  data.upsample(tilingScheme, 0, 0, undefined, 0, 0, 0);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('requires descendantX', function() {
              expect(function() {
                  data.upsample(tilingScheme, 0, 0, 0, undefined, 0, 0);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('requires descendantY', function() {
              expect(function() {
                  data.upsample(tilingScheme, 0, 0, 0, 0, undefined, 0);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('requires descendantLevel', function() {
              expect(function() {
                  data.upsample(tilingScheme, 0, 0, 0, 0, 0, undefined);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('can only upsample cross one level', function() {
              expect(function() {
                  data.upsample(tilingScheme, 0, 0, 0, 0, 0, 2);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('upsamples by subsetting when number of samples is odd in each direction', function() {
@@ -156,7 +158,7 @@ defineSuite([
              });
 
              waitsFor(function() {
-                 return typeof upsampled !== 'undefined';
+                 return defined(upsampled);
              }, 'data to be upsampled');
 
              runs(function() {
@@ -181,7 +183,7 @@ defineSuite([
              });
 
              waitsFor(function() {
-                 return typeof upsampled !== 'undefined';
+                 return defined(upsampled);
              }, 'data to be upsampled');
 
              runs(function() {
@@ -210,7 +212,7 @@ defineSuite([
              });
 
              waitsFor(function() {
-                 return typeof upsampled !== 'undefined';
+                 return defined(upsampled);
              }, 'data to be upsampled');
 
              runs(function() {
@@ -239,7 +241,7 @@ defineSuite([
              });
 
              waitsFor(function() {
-                 return typeof upsampled !== 'undefined';
+                 return defined(upsampled);
              }, 'data to be upsampled');
 
              runs(function() {
@@ -269,7 +271,7 @@ defineSuite([
              });
 
              waitsFor(function() {
-                 return typeof upsampled !== 'undefined';
+                 return defined(upsampled);
              }, 'data to be upsampled');
 
              runs(function() {
@@ -294,7 +296,7 @@ defineSuite([
              });
 
              waitsFor(function() {
-                 return typeof upsampled !== 'undefined';
+                 return defined(upsampled);
              }, 'data to be upsampled');
 
              runs(function() {
@@ -323,7 +325,7 @@ defineSuite([
              });
 
              waitsFor(function() {
-                 return typeof upsampled !== 'undefined';
+                 return defined(upsampled);
              }, 'data to be upsampled');
 
              runs(function() {
@@ -349,25 +351,25 @@ defineSuite([
          it('requires thisX', function() {
              expect(function() {
                  data.isChildAvailable(undefined, 0, 0, 0);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('requires thisY', function() {
              expect(function() {
                  data.isChildAvailable(0, undefined, 0, 0);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('requires childX', function() {
              expect(function() {
                  data.isChildAvailable(0, 0, undefined, 0);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
 
          it('requires childY', function() {
              expect(function() {
                  data.isChildAvailable(0, 0, 0, undefined);
-             }).toThrow();
+             }).toThrowDeveloperError();
          });
      });
 });

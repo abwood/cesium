@@ -1,183 +1,136 @@
 /*global define*/
-define([
-        '../Core/TimeInterval',
-        '../Core/defaultValue',
-        './CzmlBoolean',
-        './CzmlNumber',
-        './CzmlColor',
-        './DynamicProperty'
+define(['../Core/defaultValue',
+        '../Core/defined',
+        '../Core/defineProperties',
+        '../Core/DeveloperError',
+        '../Core/Event',
+        './createDynamicPropertyDescriptor'
     ], function(
-         TimeInterval,
-         defaultValue,
-         CzmlBoolean,
-         CzmlNumber,
-         CzmlColor,
-         DynamicProperty) {
+        defaultValue,
+        defined,
+        defineProperties,
+        DeveloperError,
+        Event,
+        createDynamicPropertyDescriptor) {
     "use strict";
 
     /**
-     * Represents a time-dynamic point, typically used in conjunction with DynamicPointVisualizer and
-     * DynamicObjectCollection to visualize CZML.
-     *
+     * An optionally time-dynamic billboard.
      * @alias DynamicPoint
      * @constructor
-     *
-     * @see DynamicObject
-     * @see DynamicProperty
-     * @see DynamicObjectCollection
-     * @see DynamicPointVisualizer
-     * @see VisualizerCollection
-     * @see Billboard
-     * @see BillboardCollection
-     * @see CzmlDefaults
      */
     var DynamicPoint = function() {
+        this._color = undefined;
+        this._colorSubscription = undefined;
+        this._pixelSize = undefined;
+        this._pixelSizeSubscription = undefined;
+        this._outlineColor = undefined;
+        this._outlineColorSubscription = undefined;
+        this._outlineWidth = undefined;
+        this._outlineWidthSubscription = undefined;
+        this._show = undefined;
+        this._showSubscription = undefined;
+        this._scaleByDistance = undefined;
+        this._scaleByDistanceSubscription = undefined;
+        this._definitionChanged = new Event();
+    };
+
+    defineProperties(DynamicPoint.prototype, {
         /**
-         * A DynamicProperty of type CzmlColor which determines the point's color.
-         * @type DynamicProperty
+         * Gets the event that is raised whenever a new property is assigned.
+         * @memberof DynamicPoint.prototype
+         * @type {Event}
          */
-        this.color = undefined;
+        definitionChanged : {
+            get : function() {
+                return this._definitionChanged;
+            }
+        },
+
         /**
-         * A DynamicProperty of type CzmlNumber which determines the point's pixel size.
-         * @type DynamicProperty
+         * Gets or sets the {@link Color} {@link Property} specifying the the point's color.
+         * @memberof DynamicPoint.prototype
+         * @type {Property}
          */
-        this.pixelSize = undefined;
+        color : createDynamicPropertyDescriptor('color'),
+
         /**
-         * A DynamicProperty of type CzmlColor which determines the point's outline color.
-         * @type DynamicProperty
+         * Gets or sets the numeric {@link Property} specifying the point's size in pixels.
+         * @memberof DynamicPoint.prototype
+         * @type {Property}
          */
-        this.outlineColor = undefined;
+        pixelSize : createDynamicPropertyDescriptor('pixelSize'),
+
         /**
-         * A DynamicProperty of type CzmlNumber which determines the point's outline width.
-         * @type DynamicProperty
+         * Gets or sets the {@link Color} {@link Property} specifying the the point's outline color.
+         * @memberof DynamicPoint.prototype
+         * @type {Property}
          */
-        this.outlineWidth = undefined;
+        outlineColor : createDynamicPropertyDescriptor('outlineColor'),
+
         /**
-         * A DynamicProperty of type CzmlBoolean which determines the point's visibility.
-         * @type DynamicProperty
+         * Gets or sets the numeric {@link Property} specifying the the point's outline width.
+         * @memberof DynamicPoint.prototype
+         * @type {Property}
          */
-        this.show = undefined;
+        outlineWidth : createDynamicPropertyDescriptor('outlineWidth'),
+
+        /**
+         * Gets or sets the boolean {@link Property} specifying the point's visibility.
+         * @memberof DynamicPoint.prototype
+         * @type {Property}
+         */
+        show : createDynamicPropertyDescriptor('show'),
+
+        /**
+         * Gets or sets the {@link NearFarScalar} {@link Property} used to scale billboards based on distance.
+         * If undefined, a constant size is used.
+         * @memberof DynamicBillboard.prototype
+         * @type {Property}
+         */
+        scaleByDistance : createDynamicPropertyDescriptor('scaleByDistance')
+    });
+
+    /**
+     * Duplicates a DynamicPoint instance.
+     * @memberof DynamicPoint
+     *
+     * @param {DynamicPoint} [result] The object onto which to store the result.
+     * @returns {DynamicPoint} The modified result parameter or a new instance if one was not provided.
+     */
+    DynamicPoint.prototype.clone = function(result) {
+        if (!defined(result)) {
+            result = new DynamicPoint();
+        }
+        result.color = this.color;
+        result.pixelSize = this.pixelSize;
+        result.outlineColor = this.outlineColor;
+        result.outlineWidth = this.outlineWidth;
+        result.show = this.show;
+        result.scaleByDistance = this.scaleByDistance;
+        return result;
     };
 
     /**
-     * Processes a single CZML packet and merges its data into the provided DynamicObject's point.
-     * If the DynamicObject does not have a point, one is created.  This method is not
-     * normally called directly, but is part of the array of CZML processing functions that is
-     * passed into the DynamicObjectCollection constructor.
+     * Assigns each unassigned property on this object to the value
+     * of the same property on the provided source object.
+     * @memberof DynamicPoint
      *
-     * @param {DynamicObject} dynamicObject The DynamicObject which will contain the point data.
-     * @param {Object} packet The CZML packet to process.
-     * @returns {Boolean} true if any new properties were created while processing the packet, false otherwise.
-     *
-     * @see DynamicObject
-     * @see DynamicProperty
-     * @see DynamicObjectCollection
-     * @see CzmlDefaults#updaters
+     * @param {DynamicPoint} source The object to be merged into this object.
      */
-    DynamicPoint.processCzmlPacket = function(dynamicObject, packet) {
-        var pointData = packet.point;
-        if (typeof pointData === 'undefined') {
-            return false;
+    DynamicPoint.prototype.merge = function(source) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(source)) {
+            throw new DeveloperError('source is required.');
         }
+        //>>includeEnd('debug');
 
-        var pointUpdated = false;
-        var point = dynamicObject.point;
-        pointUpdated = typeof point === 'undefined';
-        if (pointUpdated) {
-            dynamicObject.point = point = new DynamicPoint();
-        }
-
-        var interval = pointData.interval;
-        if (typeof interval !== 'undefined') {
-            interval = TimeInterval.fromIso8601(interval);
-        }
-
-        if (typeof pointData.color !== 'undefined') {
-            var color = point.color;
-            if (typeof color === 'undefined') {
-                point.color = color = new DynamicProperty(CzmlColor);
-                pointUpdated = true;
-            }
-            color.processCzmlIntervals(pointData.color, interval);
-        }
-
-        if (typeof pointData.pixelSize !== 'undefined') {
-            var pixelSize = point.pixelSize;
-            if (typeof pixelSize === 'undefined') {
-                point.pixelSize = pixelSize = new DynamicProperty(CzmlNumber);
-                pointUpdated = true;
-            }
-            pixelSize.processCzmlIntervals(pointData.pixelSize, interval);
-        }
-
-        if (typeof pointData.outlineColor !== 'undefined') {
-            var outlineColor = point.outlineColor;
-            if (typeof outlineColor === 'undefined') {
-                point.outlineColor = outlineColor = new DynamicProperty(CzmlColor);
-                pointUpdated = true;
-            }
-            outlineColor.processCzmlIntervals(pointData.outlineColor, interval);
-        }
-
-        if (typeof pointData.outlineWidth !== 'undefined') {
-            var outlineWidth = point.outlineWidth;
-            if (typeof outlineWidth === 'undefined') {
-                point.outlineWidth = outlineWidth = new DynamicProperty(CzmlNumber);
-                pointUpdated = true;
-            }
-            outlineWidth.processCzmlIntervals(pointData.outlineWidth, interval);
-        }
-
-        if (typeof pointData.show !== 'undefined') {
-            var show = point.show;
-            if (typeof show === 'undefined') {
-                point.show = show = new DynamicProperty(CzmlBoolean);
-                pointUpdated = true;
-            }
-            show.processCzmlIntervals(pointData.show, interval);
-        }
-        return pointUpdated;
-    };
-
-    /**
-     * Given two DynamicObjects, takes the point properties from the second
-     * and assigns them to the first, assuming such a property did not already exist.
-     * This method is not normally called directly, but is part of the array of CZML processing
-     * functions that is passed into the CompositeDynamicObjectCollection constructor.
-     *
-     * @param {DynamicObject} targetObject The DynamicObject which will have properties merged onto it.
-     * @param {DynamicObject} objectToMerge The DynamicObject containing properties to be merged.
-     *
-     * @see CzmlDefaults
-     */
-    DynamicPoint.mergeProperties = function(targetObject, objectToMerge) {
-        var pointToMerge = objectToMerge.point;
-        if (typeof pointToMerge !== 'undefined') {
-
-            var targetPoint = targetObject.point;
-            if (typeof targetPoint === 'undefined') {
-                targetObject.point = targetPoint = new DynamicPoint();
-            }
-
-            targetPoint.color = defaultValue(targetPoint.color, pointToMerge.color);
-            targetPoint.pixelSize = defaultValue(targetPoint.pixelSize, pointToMerge.pixelSize);
-            targetPoint.outlineColor = defaultValue(targetPoint.outlineColor, pointToMerge.outlineColor);
-            targetPoint.outlineWidth = defaultValue(targetPoint.outlineWidth, pointToMerge.outlineWidth);
-            targetPoint.show = defaultValue(targetPoint.show, pointToMerge.show);
-        }
-    };
-
-    /**
-     * Given a DynamicObject, undefines the point associated with it.
-     * This method is not normally called directly, but is part of the array of CZML processing
-     * functions that is passed into the CompositeDynamicObjectCollection constructor.
-     *
-     * @param {DynamicObject} dynamicObject The DynamicObject to remove the point from.
-     *
-     * @see CzmlDefaults
-     */
-    DynamicPoint.undefineProperties = function(dynamicObject) {
-        dynamicObject.point = undefined;
+        this.color = defaultValue(this.color, source.color);
+        this.pixelSize = defaultValue(this.pixelSize, source.pixelSize);
+        this.outlineColor = defaultValue(this.outlineColor, source.outlineColor);
+        this.outlineWidth = defaultValue(this.outlineWidth, source.outlineWidth);
+        this.show = defaultValue(this.show, source.show);
+        this.scaleByDistance = defaultValue(this.scaleByDistance, source.scaleByDistance);
     };
 
     return DynamicPoint;

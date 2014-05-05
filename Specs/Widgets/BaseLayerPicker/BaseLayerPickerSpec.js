@@ -2,24 +2,32 @@
 defineSuite([
          'Widgets/BaseLayerPicker/BaseLayerPicker',
          'Scene/ImageryLayerCollection',
+         'Scene/EllipsoidTerrainProvider',
          'Specs/EventHelper'
      ], function(
          BaseLayerPicker,
          ImageryLayerCollection,
+         EllipsoidTerrainProvider,
          EventHelper) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
+
+    var MockGlobe = function(){
+        this.imageryLayers = new ImageryLayerCollection();
+        this.terrainProvider = new EllipsoidTerrainProvider();
+    };
 
     it('can create and destroy', function() {
         var container = document.createElement('div');
         container.id = 'testContainer';
         document.body.appendChild(container);
 
-        var layers = new ImageryLayerCollection();
-
-        var widget = new BaseLayerPicker('testContainer', layers);
+        var globe = new MockGlobe();
+        var widget = new BaseLayerPicker('testContainer', {
+            globe : globe
+        });
         expect(widget.container).toBe(container);
-        expect(widget.viewModel.imageryLayers).toBe(layers);
+        expect(widget.viewModel.globe).toBe(globe);
         expect(widget.isDestroyed()).toEqual(false);
         widget.destroy();
         expect(widget.isDestroyed()).toEqual(true);
@@ -27,31 +35,35 @@ defineSuite([
         document.body.removeChild(container);
     });
 
-    it('mousedown event closes dropdown if target is not container', function() {
+    it('mousedown event closes dropdown if target is not inside container', function() {
         var container = document.createElement('div');
         container.id = 'testContainer';
         document.body.appendChild(container);
 
-        var widget = new BaseLayerPicker('testContainer', new ImageryLayerCollection());
+        var widget = new BaseLayerPicker('testContainer', {
+            globe : new MockGlobe()
+        });
 
         widget.viewModel.dropDownVisible = true;
         EventHelper.fireMouseDown(document.body);
         expect(widget.viewModel.dropDownVisible).toEqual(false);
 
         widget.viewModel.dropDownVisible = true;
-        EventHelper.fireMouseDown(container);
+        EventHelper.fireMouseDown(container.firstChild);
         expect(widget.viewModel.dropDownVisible).toEqual(true);
 
         widget.destroy();
         document.body.removeChild(container);
     });
 
-    it('touchstart event closes dropdown if target is not container', function() {
+    it('touchstart event closes dropdown if target is not inside container', function() {
         var container = document.createElement('div');
         container.id = 'testContainer';
         document.body.appendChild(container);
 
-        var widget = new BaseLayerPicker('testContainer', new ImageryLayerCollection());
+        var widget = new BaseLayerPicker('testContainer', {
+            globe : new MockGlobe()
+        });
 
         widget.viewModel.dropDownVisible = true;
 
@@ -60,7 +72,7 @@ defineSuite([
         expect(widget.viewModel.dropDownVisible).toEqual(false);
 
         widget.viewModel.dropDownVisible = true;
-        EventHelper.fireTouchStart(container);
+        EventHelper.fireTouchStart(container.firstChild);
         expect(widget.viewModel.dropDownVisible).toEqual(true);
 
         widget.destroy();
@@ -70,18 +82,22 @@ defineSuite([
     it('constructor throws with no layer collection', function() {
         expect(function() {
             return new BaseLayerPicker(document.body, undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('constructor throws with no element', function() {
         expect(function() {
-            return new BaseLayerPicker(undefined, new ImageryLayerCollection());
-        }).toThrow();
+            return new BaseLayerPicker(undefined, {
+                globe : new MockGlobe()
+            });
+        }).toThrowDeveloperError();
     });
 
     it('constructor throws with string element that does not exist', function() {
         expect(function() {
-            return new BaseLayerPicker('does not exist', new ImageryLayerCollection());
-        }).toThrow();
+            return new BaseLayerPicker('does not exist', {
+                globe : new MockGlobe()
+            });
+        }).toThrowDeveloperError();
     });
 });

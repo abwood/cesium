@@ -1,10 +1,12 @@
 /*global define*/
 define([
         './defaultValue',
+        './defined',
         './ComponentDatatype',
         './DeveloperError'
     ], function(
         defaultValue,
+        defined,
         ComponentDatatype,
         DeveloperError) {
     "use strict";
@@ -18,16 +20,16 @@ define([
      * @param {Boolean} [show=true] Determines if the geometry instance will be shown.
      *
      * @example
-     * var instance = new GeometryInstance({
-     *   geometry : new BoxGeometry({
-     *     vertexFormat : VertexFormat.POSITION_AND_NORMAL,
-     *     dimensions : new Cartesian3(1000000.0, 1000000.0, 500000.0)
+     * var instance = new Cesium.GeometryInstance({
+     *   geometry : new Cesium.BoxGeometry({
+     *     vertexFormat : Cesium.VertexFormat.POSITION_AND_NORMAL,
+     *     dimensions : new Cesium.Cartesian3(1000000.0, 1000000.0, 500000.0)
      *   }),
-     *   modelMatrix : Matrix4.multiplyByTranslation(Transforms.eastNorthUpToFixedFrame(
-     *     ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-75.59777, 40.03883))), new Cartesian3(0.0, 0.0, 1000000.0)),
+     *   modelMatrix : Cesium.Matrix4.multiplyByTranslation(Cesium.Transforms.eastNorthUpToFixedFrame(
+     *     ellipsoid.cartographicToCartesian(Cesium.Cartographic.fromDegrees(-75.59777, 40.03883))), new Cesium.Cartesian3(0.0, 0.0, 1000000.0)),
      *   id : 'box',
      *   attributes : {
-     *     show : new ShowGeometryInstanceAttribute(false)
+     *     show : new Cesium.ShowGeometryInstanceAttribute(false)
      *   }
      * });
      *
@@ -87,21 +89,26 @@ define([
      * Converts a boolean show to a typed array that can be used to assign a show attribute.
      *
      * @param {Boolean} show The show value.
+     * @param {Uint8Array} [result] The array to store the result in, if undefined a new instance will be created.
      *
-     * @returns {Uint8Array} The typed array in the attribute's format.
-     *
-     * @exception {DeveloperError} show is required.
+     * @returns {Uint8Array} The modified result parameter or a new instance if result was undefined.
      *
      * @example
      * var attributes = primitive.getGeometryInstanceAttributes('an id');
-     * attributes.show = ShowGeometryInstanceAttribute.toValue(true);
+     * attributes.show = Cesium.ShowGeometryInstanceAttribute.toValue(true, attributes.show);
      */
-    ShowGeometryInstanceAttribute.toValue = function(show) {
-        if (typeof show === 'undefined') {
+    ShowGeometryInstanceAttribute.toValue = function(show, result) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(show)) {
             throw new DeveloperError('show is required.');
         }
+        //>>includeEnd('debug');
 
-        return new Uint8Array([show]);
+        if (!defined(result)) {
+            return new Uint8Array([show]);
+        }
+        result[0] = show;
+        return result;
     };
 
     return ShowGeometryInstanceAttribute;

@@ -15,7 +15,7 @@ defineSuite([
             return new BoxGeometry({
                 maximumCorner : new Cartesian3()
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('constructor throws without maximum corner', function() {
@@ -23,15 +23,15 @@ defineSuite([
             return new BoxGeometry({
                 minimumCorner : new Cartesian3()
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('constructor creates optimized number of positions for VertexFormat.POSITIONS_ONLY', function() {
-        var m = new BoxGeometry({
+        var m = BoxGeometry.createGeometry(new BoxGeometry({
             minimumCorner : new Cartesian3(-1, -2, -3),
             maximumCorner : new Cartesian3(1, 2, 3),
             vertexFormat : VertexFormat.POSITION_ONLY
-        });
+        }));
 
         expect(m.attributes.position.values.length).toEqual(8 * 3);
         expect(m.indices.length).toEqual(12 * 3);
@@ -40,11 +40,11 @@ defineSuite([
     it('constructor computes all vertex attributes', function() {
         var minimumCorner = new Cartesian3(0, 0, 0);
         var maximumCorner = new Cartesian3(1, 1, 1);
-        var m = new BoxGeometry({
+        var m = BoxGeometry.createGeometry(new BoxGeometry({
             minimumCorner : minimumCorner,
             maximumCorner : maximumCorner,
             vertexFormat : VertexFormat.ALL
-        });
+        }));
 
         expect(m.attributes.position.values.length).toEqual(6 * 4 * 3);
         expect(m.attributes.normal.values.length).toEqual(6 * 4 * 3);
@@ -55,13 +55,13 @@ defineSuite([
         expect(m.indices.length).toEqual(12 * 3);
 
         expect(m.boundingSphere.center).toEqual(Cartesian3.ZERO);
-        expect(m.boundingSphere.radius).toEqual(maximumCorner.magnitude() * 0.5);
+        expect(m.boundingSphere.radius).toEqual(Cartesian3.magnitude(maximumCorner) * 0.5);
     });
 
     it('fromDimensions throws without dimensions', function() {
         expect(function() {
             return BoxGeometry.fromDimensions();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('fromDimensions throws with negative dimensions', function() {
@@ -69,14 +69,14 @@ defineSuite([
             return BoxGeometry.fromDimensions({
                 dimensions : new Cartesian3(1, 2, -1)
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('fromDimensions', function() {
-        var m = BoxGeometry.fromDimensions({
+        var m = BoxGeometry.createGeometry(BoxGeometry.fromDimensions({
             dimensions : new Cartesian3(1, 2, 3),
             vertexFormat : VertexFormat.POSITION_ONLY
-        });
+        }));
 
         expect(m.attributes.position.values.length).toEqual(8 * 3);
         expect(m.indices.length).toEqual(12 * 3);

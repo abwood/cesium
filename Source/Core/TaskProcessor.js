@@ -3,6 +3,8 @@ define([
         'require',
         './buildModuleUrl',
         './defaultValue',
+        './defined',
+        './destroyObject',
         './isCrossOriginUrl',
         '../ThirdParty/when',
         '../ThirdParty/Uri'
@@ -10,37 +12,81 @@ define([
         require,
         buildModuleUrl,
         defaultValue,
+        defined,
+        destroyObject,
         isCrossOriginUrl,
         when,
         Uri) {
     "use strict";
 
-    function completeTask(processor, event) {
+    function canTransferArrayBuffer() {
+        if (!defined(TaskProcessor._canTransferArrayBuffer)) {
+            var worker = new Worker(getWorkerUrl('Workers/transferTypedArrayTest.js'));
+            worker.postMessage = defaultValue(worker.webkitPostMessage, worker.postMessage);
+
+            var value = 99;
+            var array = new Int8Array([value]);
+
+            try {
+                // postMessage might fail with a DataCloneError
+                // if transferring array buffers is not supported.
+                worker.postMessage({
+                    array : array
+                }, [array.buffer]);
+            } catch (e) {
+                TaskProcessor._canTransferArrayBuffer = false;
+                return TaskProcessor._canTransferArrayBuffer;
+            }
+
+            var deferred = when.defer();
+
+            worker.onmessage = function(event) {
+                var array = event.data.array;
+
+                // some versions of Firefox silently fail to transfer typed arrays.
+                // https://bugzilla.mozilla.org/show_bug.cgi?id=841904
+                // Check to make sure the value round-trips successfully.
+                var result = defined(array) && array[0] === value;
+                deferred.resolve(result);
+
+                worker.terminate();
+
+                TaskProcessor._canTransferArrayBuffer = result;
+            };
+
+            TaskProcessor._canTransferArrayBuffer = deferred.promise;
+        }
+
+        return TaskProcessor._canTransferArrayBuffer;
+    }
+
+    function completeTask(processor, data) {
         --processor._activeTasks;
 
-        var data = event.data;
         var id = data.id;
-        var result = data.result;
+        if (!defined(id)) {
+            // This is not one of ours.
+            return;
+        }
 
         var deferreds = processor._deferreds;
         var deferred = deferreds[id];
 
-        deferred.resolve(result);
+        if (defined(data.error)) {
+            deferred.reject(data.error);
+        } else {
+            deferred.resolve(data.result);
+        }
 
         delete deferreds[id];
     }
 
-    var _bootstrapperUrl;
-    function getBootstrapperUrl() {
-        if (typeof _bootstrapperUrl !== 'undefined') {
-            return _bootstrapperUrl;
-        }
+    function getWorkerUrl(moduleID) {
+        var url = buildModuleUrl(moduleID);
 
-        _bootstrapperUrl = buildModuleUrl('Workers/cesiumWorkerBootstrapper.js');
-
-        if (isCrossOriginUrl(_bootstrapperUrl)) {
+        if (isCrossOriginUrl(url)) {
             //to load cross-origin, create a shim worker from a blob URL
-            var script = 'importScripts("' + _bootstrapperUrl + '");';
+            var script = 'importScripts("' + url + '");';
 
             var blob;
             try {
@@ -55,24 +101,32 @@ define([
             }
 
             var URL = window.URL || window.webkitURL;
-            _bootstrapperUrl = URL.createObjectURL(blob);
+            url = URL.createObjectURL(blob);
         }
 
-        return _bootstrapperUrl;
+        return url;
+    }
+
+    var bootstrapperUrlResult;
+    function getBootstrapperUrl() {
+        if (!defined(bootstrapperUrlResult)) {
+            bootstrapperUrlResult = getWorkerUrl('Workers/cesiumWorkerBootstrapper.js');
+        }
+        return bootstrapperUrlResult;
     }
 
     function createWorker(processor) {
-        var bootstrapperUrl = getBootstrapperUrl();
-        var worker = new Worker(bootstrapperUrl);
+        var worker = new Worker(getBootstrapperUrl());
         worker.postMessage = defaultValue(worker.webkitPostMessage, worker.postMessage);
 
-        //bootstrap
         var bootstrapMessage = {
             loaderConfig : {},
-            workerModule : 'Workers/' + processor._workerName
+            workerModule : TaskProcessor._workerModulePrefix + processor._workerName
         };
 
-        if (typeof require.toUrl !== 'undefined') {
+        if (defined(TaskProcessor._loaderConfig)) {
+            bootstrapMessage.loaderConfig = TaskProcessor._loaderConfig;
+        } else if (defined(require.toUrl)) {
             var baseUrl = new Uri('..').resolve(new Uri(buildModuleUrl('Workers/cesiumWorkerBootstrapper.js'))).toString();
             bootstrapMessage.loaderConfig.baseUrl = baseUrl;
         } else {
@@ -84,10 +138,10 @@ define([
         worker.postMessage(bootstrapMessage);
 
         worker.onmessage = function(event) {
-            completeTask(processor, event);
+            completeTask(processor, event.data);
         };
 
-        processor._worker = worker;
+        return worker;
     }
 
     /**
@@ -113,6 +167,8 @@ define([
         this._nextID = 0;
     };
 
+    var emptyTransferableObjectArray = [];
+
     /**
      * Schedule a task to be processed by the web worker asynchronously.  If there are currently more
      * tasks active than the maximum set by the constructor, will immediately return undefined.
@@ -126,22 +182,22 @@ define([
      *                    if there are too many active tasks,
      *
      * @example
-     * var taskProcessor = new TaskProcessor('myWorkerName');
+     * var taskProcessor = new Cesium.TaskProcessor('myWorkerName');
      * var promise = taskProcessor.scheduleTask({
      *     someParameter : true,
      *     another : 'hello'
      * });
-     * if (typeof promise === 'undefined') {
+     * if (!Cesium.defined(promise)) {
      *     // too many active tasks - try again later
      * } else {
-     *     when(promise, function(result) {
+     *     Cesium.when(promise, function(result) {
      *         // use the result of the task
      *     });
      * }
      */
     TaskProcessor.prototype.scheduleTask = function(parameters, transferableObjects) {
-        if (typeof this._worker === 'undefined') {
-            createWorker(this);
+        if (!defined(this._worker)) {
+            this._worker = createWorker(this);
         }
 
         if (this._activeTasks >= this._maximumActiveTasks) {
@@ -150,17 +206,66 @@ define([
 
         ++this._activeTasks;
 
-        var id = this._nextID++;
-        var deferred = when.defer();
-        this._deferreds[id] = deferred;
+        var processor = this;
+        return when(canTransferArrayBuffer(), function(canTransferArrayBuffer) {
+            if (!defined(transferableObjects)) {
+                transferableObjects = emptyTransferableObjectArray;
+            } else if (!canTransferArrayBuffer) {
+                transferableObjects.length = 0;
+            }
 
-        this._worker.postMessage({
-            id : id,
-            parameters : parameters
-        }, transferableObjects);
+            var id = processor._nextID++;
+            var deferred = when.defer();
+            processor._deferreds[id] = deferred;
 
-        return deferred.promise;
+            processor._worker.postMessage({
+                id : id,
+                parameters : parameters,
+                canTransferArrayBuffer : canTransferArrayBuffer
+            }, transferableObjects);
+
+            return deferred.promise;
+        });
     };
+
+    /**
+     * Returns true if this object was destroyed; otherwise, false.
+     * <br /><br />
+     * If this object was destroyed, it should not be used; calling any function other than
+     * <code>isDestroyed</code> will result in a {@link DeveloperError} exception.
+     *
+     * @memberof TaskProcessor
+     *
+     * @returns {Boolean} True if this object was destroyed; otherwise, false.
+     *
+     * @see TaskProcessor#destroy
+     */
+    TaskProcessor.prototype.isDestroyed = function() {
+        return false;
+    };
+
+    /**
+     * Destroys this object.  This will immediately terminate the Worker.
+     * <br /><br />
+     * Once an object is destroyed, it should not be used; calling any function other than
+     * <code>isDestroyed</code> will result in a {@link DeveloperError} exception.
+     *
+     * @memberof TaskProcessor
+     *
+     * @returns {undefined}
+     */
+    TaskProcessor.prototype.destroy = function() {
+        if (defined(this._worker)) {
+            this._worker.terminate();
+        }
+        return destroyObject(this);
+    };
+
+    // exposed for testing purposes
+    TaskProcessor._defaultWorkerModulePrefix = 'Workers/';
+    TaskProcessor._workerModulePrefix = TaskProcessor._defaultWorkerModulePrefix;
+    TaskProcessor._loaderConfig = undefined;
+    TaskProcessor._canTransferArrayBuffer = undefined;
 
     return TaskProcessor;
 });

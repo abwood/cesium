@@ -1,12 +1,18 @@
 /*global define*/
 define([
+        '../Core/clone',
         '../Core/defaultValue',
+        '../Core/defined',
         '../Renderer/BlendingState',
-        '../Renderer/CullFace'
+        '../Renderer/CullFace',
+        '../Renderer/createShaderSource'
     ], function(
+        clone,
         defaultValue,
+        defined,
         BlendingState,
-        CullFace) {
+        CullFace,
+        createShaderSource) {
     "use strict";
 
     /**
@@ -21,6 +27,8 @@ define([
      * @see EllipsoidSurfaceAppearance
      * @see PerInstanceColorAppearance
      * @see DebugAppearance
+     * @see PolylineColorAppearance
+     * @see PolylineMaterialAppearance
      */
     var Appearance = function(options) {
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
@@ -65,6 +73,24 @@ define([
          * @readonly
          */
         this.renderState = options.renderState;
+
+        /**
+         * When <code>true</code>, the geometry is expected to appear translucent.
+         *
+         * @readonly
+         *
+         * @default true
+         */
+        this.translucent = defaultValue(options.translucent, true);
+
+        /**
+         * When <code>true</code>, the geometry is expected to be closed.
+         *
+         * @readonly
+         *
+         * @default false
+         */
+        this.closed = defaultValue(options.closed, false);
     };
 
     /**
@@ -73,21 +99,45 @@ define([
      *
      * @memberof Appearance
      *
-     * @return String The full GLSL fragment shader source.
+     * @returns {String} The full GLSL fragment shader source.
      */
     Appearance.prototype.getFragmentShaderSource = function() {
-        var flat = this.flat ? '#define FLAT 1\n#line 0 \n' : '#line 0 \n';
-        var faceForward = this.faceForward ? '#define FACE_FORWARD 1\n#line 0 \n' : '#line 0 \n';
+        return createShaderSource({
+            defines : [this.flat ? 'FLAT' : '', this.faceForward ? 'FACE_FORWARD' : ''],
+            sources : [defined(this.material) ? this.material.shaderSource : '', this.fragmentShaderSource]
+        });
+    };
 
-        if (typeof this.material !== 'undefined') {
-            return '#line 0\n' +
-                this.material.shaderSource +
-                flat +
-                faceForward +
-                this.fragmentShaderSource;
+    /**
+     * Determines if the geometry is translucent based on {@link Appearance#translucent} and {@link Material#isTranslucent}.
+     *
+     * @memberof Appearance
+     *
+     * @returns {Boolean} <code>true</code> if the appearance is translucent.
+     */
+    Appearance.prototype.isTranslucent = function() {
+        return (defined(this.material) && this.material.isTranslucent()) || (!defined(this.material) && this.translucent);
+    };
+
+    /**
+     * Creates a render state.  This is not the final {@link RenderState} instance; instead,
+     * it can contain a subset of render state properties identical to <code>renderState</code>
+     * passed to {@link Context#createRenderState}.
+     *
+     * @memberof Appearance
+     *
+     * @returns {Object} The render state.
+     */
+    Appearance.prototype.getRenderState = function() {
+        var translucent = this.isTranslucent();
+        var rs = clone(this.renderState, false);
+        if (translucent) {
+            rs.depthMask = false;
+            rs.blending = BlendingState.ALPHA_BLEND;
+        } else {
+            rs.depthMask = true;
         }
-
-        return flat + faceForward + this.fragmentShaderSource;
+        return rs;
     };
 
     /**

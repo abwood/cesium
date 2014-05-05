@@ -1,10 +1,12 @@
 /*global define*/
 define([
         '../Core/defaultValue',
+        '../Core/defined',
         '../Core/DeveloperError',
         './Appearance'
     ], function(
         defaultValue,
+        defined,
         DeveloperError,
         Appearance) {
     "use strict";
@@ -26,25 +28,25 @@ define([
      * @param {String} [options.fragmentShaderSource=undefined] Optional GLSL fragment shader source to override the default fragment shader.
      * @param {RenderState} [options.renderState=undefined] Optional render state to override the default render state.
      *
-     * @exception {DeveloperError} options.attributeName is required.
      * @exception {DeveloperError} options.glslDatatype must be float, vec2, vec3, or vec4.
      *
      * @example
-     * var primitive = new Primitive({
+     * var primitive = new Cesium.Primitive({
      *   geometryInstances : // ...
-     *   appearance : new DebugAppearance({
+     *   appearance : new Cesium.DebugAppearance({
      *     attributeName : 'normal'
      *   })
      * });
      */
     var DebugAppearance = function(options) {
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
-
         var attributeName = options.attributeName;
 
-        if (typeof attributeName === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(attributeName)) {
             throw new DeveloperError('options.attributeName is required.');
         }
+        //>>includeEnd('debug');
 
         var glslDatatype = defaultValue(options.glslDatatype, 'vec3');
         var varyingName = 'v_' + attributeName;
@@ -154,6 +156,24 @@ define([
          * @readonly
          */
         this.glslDatatype = glslDatatype;
+
+        /**
+         * When <code>true</code>, the geometry is expected to appear translucent.
+         *
+         * @readonly
+         *
+         * @default false
+         */
+        this.translucent = defaultValue(options.translucent, false);
+
+        /**
+         * When <code>true</code>, the geometry is expected to be closed.
+         *
+         * @readonly
+         *
+         * @default false
+         */
+        this.closed = defaultValue(options.closed, false);
     };
 
     /**
@@ -162,9 +182,29 @@ define([
      *
      * @memberof DebugAppearance
      *
-     * @return String The full GLSL fragment shader source.
+     * @returns String The full GLSL fragment shader source.
      */
     DebugAppearance.prototype.getFragmentShaderSource = Appearance.prototype.getFragmentShaderSource;
+
+    /**
+     * Determines if the geometry is translucent based on {@link DebugAppearance#translucent}.
+     *
+     * @memberof DebugAppearance
+     *
+     * @returns {Boolean} <code>true</code> if the appearance is translucent.
+     */
+    DebugAppearance.prototype.isTranslucent = Appearance.prototype.isTranslucent;
+
+    /**
+     * Creates a render state.  This is not the final {@link RenderState} instance; instead,
+     * it can contain a subset of render state properties identical to <code>renderState</code>
+     * passed to {@link Context#createRenderState}.
+     *
+     * @memberof DebugAppearance
+     *
+     * @returns {Object} The render state.
+     */
+    DebugAppearance.prototype.getRenderState = Appearance.prototype.getRenderState;
 
     return DebugAppearance;
 });

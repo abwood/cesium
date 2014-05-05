@@ -2,6 +2,7 @@
 define([
         '../Core/ComponentDatatype',
         '../Core/defaultValue',
+        '../Core/defined',
         '../Core/destroyObject',
         '../Core/DeveloperError',
         '../Core/Math',
@@ -9,6 +10,7 @@ define([
     ], function(
         ComponentDatatype,
         defaultValue,
+        defined,
         destroyObject,
         DeveloperError,
         CesiumMath,
@@ -22,29 +24,25 @@ define([
      *
      * @constructor
      *
-     * @exception {DeveloperError} context is required.
-     * @exception {DeveloperError} At least one attribute is required.
      * @exception {DeveloperError} Attribute must have a componentsPerAttribute.
      * @exception {DeveloperError} Attribute must have a valid componentDatatype or not specify it.
      * @exception {DeveloperError} Attribute must have a valid usage or not specify it.
      * @exception {DeveloperError} Index n is used by more than one attribute.
      */
     var VertexArrayFacade = function(context, attributes, sizeInVertices) {
+        //>>includeStart('debug', pragmas.debug);
         if (!context) {
             throw new DeveloperError('context is required.');
         }
-
         if (!attributes || (attributes.length === 0)) {
             throw new DeveloperError('At least one attribute is required.');
         }
+        //>>includeEnd('debug');
 
         var attrs = VertexArrayFacade._verifyAttributes(attributes);
-
         sizeInVertices = sizeInVertices || 0;
-
         var attributesByPurposeAndUsage = {};
         var precreatedAttributes = [];
-
         var attributesByUsage;
         var attributesForUsage;
         var purpose;
@@ -64,13 +62,13 @@ define([
 
             purpose = attribute.purpose;
             attributesByUsage = attributesByPurposeAndUsage[purpose];
-            if (typeof attributesByUsage === 'undefined') {
+            if (!defined(attributesByUsage)) {
                 attributesByUsage = attributesByPurposeAndUsage[purpose] = {};
             }
 
             usage = attribute.usage.toString();
             attributesForUsage = attributesByUsage[usage];
-            if (typeof attributesForUsage === 'undefined') {
+            if (!defined(attributesForUsage)) {
                 attributesForUsage = attributesByUsage[usage] = [];
             }
 
@@ -92,7 +90,7 @@ define([
                 attributesByUsage = attributesByPurposeAndUsage[purpose];
 
                 var buffersByUsage = this._buffersByPurposeAndUsage[purpose];
-                if (typeof buffersByUsage === 'undefined') {
+                if (!defined(buffersByUsage)) {
                     buffersByUsage = this._buffersByPurposeAndUsage[purpose] = {};
                 }
 
@@ -201,7 +199,7 @@ define([
                 if (uniqueIndex === true) {
                     throw new DeveloperError('Index ' + index + ' is used by more than one attribute.');
                 }
-                if (typeof uniqueIndex !== 'undefined') {
+                if (defined(uniqueIndex)) {
                     if (uniqueIndex[purpose]) {
                         throw new DeveloperError('Index ' + index + ' is used by more than one attribute with the same purpose.');
                     }
@@ -283,7 +281,7 @@ define([
             VertexArrayFacade._resize(buffer, this._size);
 
             var writersForPurpose = this.writers[buffer.purpose];
-            if (typeof writersForPurpose === 'undefined') {
+            if (!defined(writersForPurpose)) {
                 writersForPurpose = this.writers[buffer.purpose] = [];
             }
 
@@ -315,7 +313,7 @@ define([
             var length = views.length;
             for ( var i = 0; i < length; ++i) {
                 var view = views[i];
-                view.view = view.componentDatatype.createArrayBufferView(arrayBuffer, view.offsetInBytes);
+                view.view = ComponentDatatype.createArrayBufferView(view.componentDatatype, arrayBuffer, view.offsetInBytes);
             }
 
             buffer.arrayBuffer = arrayBuffer;
@@ -391,7 +389,7 @@ define([
 
         ///////////////////////////////////////////////////////////////////////
 
-        if (recreateVA || typeof this.vaByPurpose === 'undefined') {
+        if (recreateVA || !defined(this.vaByPurpose)) {
             var buffersByPurposeAndUsage = this._buffersByPurposeAndUsage;
 
             destroyVA(this);
@@ -446,13 +444,13 @@ define([
 
             var vertexBuffer = buffer.vertexBuffer;
             var vertexBufferSizeInBytes = vertexArrayFacade._size * buffer.vertexSizeInBytes;
-            var vertexBufferDefined = typeof vertexBuffer !== 'undefined';
-            if (!vertexBufferDefined || (vertexBuffer.getSizeInBytes() < vertexBufferSizeInBytes)) {
+            var vertexBufferDefined = defined(vertexBuffer);
+            if (!vertexBufferDefined || (vertexBuffer.sizeInBytes < vertexBufferSizeInBytes)) {
                 if (vertexBufferDefined) {
                     vertexBuffer.destroy();
                 }
                 buffer.vertexBuffer = vertexArrayFacade._context.createVertexBuffer(buffer.arrayBuffer, buffer.usage);
-                buffer.vertexBuffer.setVertexArrayDestroyable(false);
+                buffer.vertexBuffer.vertexArrayDestroyable = false;
 
                 return true; // Created new vertex buffer
             }
@@ -487,16 +485,16 @@ define([
      * @memberof VertexArrayFacade
      */
     VertexArrayFacade.prototype.subCommit = function(offsetInVertices, lengthInVertices) {
+        //>>includeStart('debug', pragmas.debug);
         if (offsetInVertices < 0 || offsetInVertices >= this._size) {
             throw new DeveloperError('offsetInVertices must be greater than or equal to zero and less than the vertex array size.');
         }
-
         if (offsetInVertices + lengthInVertices > this._size) {
             throw new DeveloperError('offsetInVertices + lengthInVertices cannot exceed the vertex array size.');
         }
+        //>>includeEnd('debug');
 
         var allBuffers = this._allBuffers;
-
         for (var i = 0, len = allBuffers.length; i < len; ++i) {
             subCommit(allBuffers[i], offsetInVertices, lengthInVertices);
         }
@@ -529,7 +527,7 @@ define([
 
     function destroyVA(vertexArrayFacade) {
         var vaByPurpose = vertexArrayFacade.vaByPurpose;
-        if (typeof vaByPurpose === 'undefined') {
+        if (!defined(vaByPurpose)) {
             return;
         }
 

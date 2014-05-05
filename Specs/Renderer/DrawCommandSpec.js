@@ -11,13 +11,15 @@ defineSuite([
         expect(c.boundingVolume).toBeUndefined();
         expect(c.cull).toEqual(true);
         expect(c.modelMatrix).toBeUndefined();
-        expect(c.offset).toBeUndefined();
+        expect(c.offset).toEqual(0);
         expect(c.count).toBeUndefined();
         expect(c.primitiveType).toBeUndefined();
         expect(c.renderState).toBeUndefined();
         expect(c.shaderProgram).toBeUndefined();
         expect(c.uniformMap).toBeUndefined();
         expect(c.vertexArray).toBeUndefined();
+        expect(c.owner).toBeUndefined();
+        expect(c.debugShowBoundingVolume).toEqual(false);
     });
 
 });

@@ -1,9 +1,13 @@
 /*global defineSuite*/
 defineSuite(['Core/Color',
-             'Core/Math'
+             'Core/Cartesian4',
+             'Core/Math',
+             'Specs/createPackableSpecs'
             ], function(
               Color,
-              CesiumMath) {
+              Cartesian4,
+              CesiumMath,
+              createPackableSpecs) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -49,6 +53,15 @@ defineSuite(['Core/Color',
         expect(bytes).toEqual([r, g, b, a]);
     });
 
+    it('toBytes works with a result parameter', function() {
+        var color = new Color(0.1, 0.2, 0.3, 0.4);
+        var result = [];
+        var expectedResult = [25, 51, 76, 102];
+        var returnedResult = color.toBytes(result);
+        expect(returnedResult).toBe(result);
+        expect(returnedResult).toEqual(expectedResult);
+    });
+
     it('byteToFloat works in all cases', function() {
         expect(Color.byteToFloat(0)).toEqual(0);
         expect(Color.byteToFloat(255)).toEqual(1.0);
@@ -59,6 +72,24 @@ defineSuite(['Core/Color',
         expect(Color.floatToByte(0)).toEqual(0);
         expect(Color.floatToByte(1.0)).toEqual(255);
         expect(Color.floatToByte(127 / 255)).toEqual(127);
+    });
+
+    it('fromCartesian4 returns a color with corrrect values', function(){
+        var color = Color.fromCartesian4(new Cartesian4(1.0, 2.0, 3.0, 4.0));
+        expect(color).toEqual(new Color(1.0, 2.0, 3.0, 4.0));
+    });
+
+    it('fromCartesian4 result param returns color with correct values', function(){
+        var color = new Color();
+        var result = Color.fromCartesian4(new Cartesian4(1.0, 2.0, 3.0, 4.0), color);
+        expect(color).toBe(result);
+        expect(color).toEqual(new Color(1.0, 2.0, 3.0, 4.0));
+    });
+
+    it('fromCartesian4 throws without a Cartesian4', function() {
+        expect(function() {
+            Color.fromCartesian4();
+        }).toThrowDeveloperError();
     });
 
     it('clone with no parameters returns a new identical copy.', function() {
@@ -211,7 +242,7 @@ defineSuite(['Core/Color',
     it('fromCssColorString throws with undefined', function() {
         expect(function() {
             Color.fromCssColorString(undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('fromHsl produces expected output', function() {
@@ -223,6 +254,96 @@ defineSuite(['Core/Color',
 
     it('fromHsl properly wraps hue into valid range', function() {
         expect(Color.fromHsl(5, 1.0, 0.5, 1.0)).toEqual(Color.RED);
+    });
+
+    it('fromRandom generates a random color with no options', function() {
+        var color = Color.fromRandom();
+        expect(color.red).toBeBetween(0.0, 1.0);
+        expect(color.green).toBeBetween(0.0, 1.0);
+        expect(color.blue).toBeBetween(0.0, 1.0);
+        expect(color.alpha).toBeBetween(0.0, 1.0);
+    });
+
+    it('fromRandom generates a random color with no options', function() {
+        var result = new Color();
+        var color = Color.fromRandom({}, result);
+        expect(result).toBe(color);
+        expect(color.red).toBeBetween(0.0, 1.0);
+        expect(color.green).toBeBetween(0.0, 1.0);
+        expect(color.blue).toBeBetween(0.0, 1.0);
+        expect(color.alpha).toBeBetween(0.0, 1.0);
+    });
+
+    it('fromRandom uses specified exact values', function() {
+        var options = {
+            red : 0.1,
+            green : 0.2,
+            blue : 0.3,
+            alpha : 0.4
+        };
+        var color = Color.fromRandom(options);
+        expect(color.red).toEqual(options.red);
+        expect(color.green).toEqual(options.green);
+        expect(color.blue).toEqual(options.blue);
+        expect(color.alpha).toEqual(options.alpha);
+    });
+
+    it('fromRandom generates a random kind of Red color within intervals', function() {
+        var options = {
+            red : undefined,
+            minimumRed : 0.1,
+            maximumRed : 0.2,
+            minimumGreen : 0.3,
+            maximumGreen : 0.4,
+            minimumBlue : 0.5,
+            maximumBlue : 0.6,
+            minimumAlpha : 0.7,
+            maximumAlpha : 0.8
+        };
+
+        for ( var i = 0; i < 100; i++) {
+            var color = Color.fromRandom(options);
+            expect(color.red).toBeBetween(options.minimumRed, options.maximumRed);
+            expect(color.green).toBeBetween(options.minimumGreen, options.maximumGreen);
+            expect(color.blue).toBeBetween(options.minimumBlue, options.maximumBlue);
+            expect(color.alpha).toBeBetween(options.minimumAlpha, options.maximumAlpha);
+        }
+    });
+
+    it('fromRandom throws with invalid minimum-maximum red values', function() {
+        expect(function() {
+            Color.fromRandom({
+                minimumRed : 1,
+                maximumRed : 0
+            });
+        }).toThrowDeveloperError();
+    });
+
+    it('fromRandom throws with invalid minimum-maximum green values', function() {
+        expect(function() {
+            Color.fromRandom({
+                minimumGreen : 1,
+                maximumGreen : 0
+            });
+        }).toThrowDeveloperError();
+    });
+
+    it('fromRandom throws with invalid minimum-maximum blue values', function() {
+        expect(function() {
+            Color.fromRandom({
+                minimumBlue : 1,
+                maximumBlue : 0
+            });
+        }).toThrowDeveloperError();
+    });
+
+    it('fromRandom throws with invalid minimum-maximum alpha values', function() {
+        expect(function() {
+            Color.fromRandom({
+                minimumAlpha : 1,
+                maximumAlpha : 0
+            });
+        }).toThrowDeveloperError();
     });
 
     it('toString produces correct results', function() {
@@ -242,4 +363,6 @@ defineSuite(['Core/Color',
         var newRgba = newColor.toRgba();
         expect(rgba).toEqual(newRgba);
     });
+
+    createPackableSpecs(Color, new Color(0.1, 0.2, 0.3, 0.4), [0.1, 0.2, 0.3, 0.4]);
 });

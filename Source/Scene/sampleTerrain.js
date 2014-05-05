@@ -1,9 +1,11 @@
 /*global define*/
 define([
         '../Core/DeveloperError',
+        '../Core/defined',
         '../ThirdParty/when'
     ], function(
         DeveloperError,
+        defined,
         when) {
     "use strict";
 
@@ -29,31 +31,33 @@ define([
      *
      * @example
      * // Query the terrain height of two Cartographic positions
-     * var terrainProvider = new CesiumTerrainProvider({
-     *     url : 'http://cesium.agi.com/smallterrain'
+     * var terrainProvider = new Cesium.CesiumTerrainProvider({
+     *     url : '//cesiumjs.org/smallterrain'
      * });
      * var positions = [
-     *     Cartographic.fromDegrees(86.925145, 27.988257),
-     *     Cartographic.fromDegrees(87.0, 28.0)
+     *     Cesium.Cartographic.fromDegrees(86.925145, 27.988257),
+     *     Cesium.Cartographic.fromDegrees(87.0, 28.0)
      * ];
-     * var promise = sampleTerrain(terrainProvider, 11, positions);
-     * when(promise, function(updatedPositions) {
+     * var promise = Cesium.sampleTerrain(terrainProvider, 11, positions);
+     * Cesium.when(promise, function(updatedPositions) {
      *     // positions[0].height and positions[1].height have been updated.
      *     // updatedPositions is just a reference to positions.
      * });
      */
     var sampleTerrain = function(terrainProvider, level, positions) {
-        if (typeof terrainProvider === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(terrainProvider)) {
             throw new DeveloperError('terrainProvider is required.');
         }
-        if (typeof level === 'undefined') {
+        if (!defined(level)) {
             throw new DeveloperError('level is required.');
         }
-        if (typeof positions === 'undefined') {
+        if (!defined(positions)) {
             throw new DeveloperError('positions is required.');
         }
+        //>>includeEnd('debug');
 
-        var tilingScheme = terrainProvider.getTilingScheme();
+        var tilingScheme = terrainProvider.tilingScheme;
 
         var i;
 
@@ -98,11 +102,11 @@ define([
 
     function createInterpolateFunction(tileRequest) {
         var tilePositions = tileRequest.positions;
-        var extent = tileRequest.tilingScheme.tileXYToExtent(tileRequest.x, tileRequest.y, tileRequest.level);
+        var rectangle = tileRequest.tilingScheme.tileXYToRectangle(tileRequest.x, tileRequest.y, tileRequest.level);
         return function(terrainData) {
             for (var i = 0; i < tilePositions.length; ++i) {
                 var position = tilePositions[i];
-                position.height = terrainData.interpolateHeight(extent, position.longitude, position.latitude);
+                position.height = terrainData.interpolateHeight(rectangle, position.longitude, position.latitude);
             }
         };
     }

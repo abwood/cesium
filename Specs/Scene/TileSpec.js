@@ -3,7 +3,8 @@ defineSuite([
          'Scene/Tile',
          'Specs/createContext',
          'Specs/destroyContext',
-         'Core/Extent',
+         'Core/defined',
+         'Core/Rectangle',
          'Core/Math',
          'Scene/CesiumTerrainProvider',
          'Scene/ImageryLayerCollection',
@@ -15,7 +16,8 @@ defineSuite([
          Tile,
          createContext,
          destroyContext,
-         Extent,
+         defined,
+         Rectangle,
          CesiumMath,
          CesiumTerrainProvider,
          ImageryLayerCollection,
@@ -30,22 +32,22 @@ defineSuite([
     it('throws without a description', function() {
         expect(function() {
             return new Tile();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
-    it('throws without description.extent', function() {
+    it('throws without description.rectangle', function() {
         expect(function() {
             return new Tile({
                 x : 0,
                 y : 0
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws without description.level', function() {
         expect(function() {
             return new Tile({
-                extent : new Extent(
+                rectangle : new Rectangle(
                     -CesiumMath.PI_OVER_FOUR,
                     0.0,
                     CesiumMath.PI_OVER_FOUR,
@@ -54,7 +56,7 @@ defineSuite([
                 x : 0,
                 y : 0
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('throws with negative x or y properties', function() {
@@ -64,20 +66,20 @@ defineSuite([
                 y : -1.0,
                 level : 1.0
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
-    it('creates extent on construction', function() {
+    it('creates rectangle on construction', function() {
         var desc = {tilingScheme : new WebMercatorTilingScheme(), x : 0, y : 0, level : 0};
         var tile = new Tile(desc);
-        var extent = desc.tilingScheme.tileXYToExtent(desc.x, desc.y, desc.level);
-        expect(tile.extent).toEqual(extent);
+        var rectangle = desc.tilingScheme.tileXYToRectangle(desc.x, desc.y, desc.level);
+        expect(tile.rectangle).toEqual(rectangle);
     });
 
     it('throws if constructed improperly', function() {
         expect(function() {
             return new Tile();
-        }).toThrow();
+        }).toThrowDeveloperError();
 
         expect(function() {
             return new Tile({
@@ -85,7 +87,7 @@ defineSuite([
                 y : 0,
                 level : 0,
                 tilingScheme : {
-                    tileXYToExtent : function() {
+                    tileXYToRectangle : function() {
                         return undefined;
                     }
                 }
@@ -97,36 +99,36 @@ defineSuite([
                 y : 0,
                 level : 0,
                 tilingScheme : {
-                    tileXYToExtent : function() {
+                    tileXYToRectangle : function() {
                         return undefined;
                     }
                 }
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
 
         expect(function() {
             return new Tile({
                 x : 0,
                 level : 0,
                 tilingScheme : {
-                    tileXYToExtent : function() {
+                    tileXYToRectangle : function() {
                         return undefined;
                     }
                 }
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
 
         expect(function() {
             return new Tile({
                 x : 0,
                 y : 0,
                 tilingScheme : {
-                    tileXYToExtent : function() {
+                    tileXYToRectangle : function() {
                         return undefined;
                     }
                 }
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
 
         expect(function() {
             return new Tile({
@@ -134,7 +136,7 @@ defineSuite([
                 y : 0,
                 level : 0
             });
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     describe('processStateMachine', function() {
@@ -155,9 +157,7 @@ defineSuite([
                     requestTileGeometry : function(x, y, level) {
                         return undefined;
                     },
-                    getTilingScheme : function() {
-                        return tilingScheme;
-                    },
+                    tilingScheme : tilingScheme,
                     hasWaterMask : function() {
                         return true;
                     }
@@ -169,16 +169,14 @@ defineSuite([
                         deferred.reject();
                         return deferred.promise;
                     },
-                    getTilingScheme : function() {
-                        return tilingScheme;
-                    },
+                    tilingScheme : tilingScheme,
                     hasWaterMask : function() {
                         return true;
                     }
             };
 
             realTerrainProvider = new CesiumTerrainProvider({
-                url : 'http://cesium.agi.com/smallterrain'
+                url : 'http://cesiumjs.org/smallterrain'
             });
         });
 
@@ -187,7 +185,13 @@ defineSuite([
         });
 
         beforeEach(function() {
+            waitsFor(function() {
+                return realTerrainProvider.ready;
+            });
+
             tilingScheme = new WebMercatorTilingScheme();
+            alwaysDeferTerrainProvider.tilingScheme = tilingScheme;
+            alwaysFailTerrainProvider.tilingScheme = tilingScheme;
             rootTiles = tilingScheme.createLevelZeroTiles();
             rootTile = rootTiles[0];
             imageryLayerCollection = new ImageryLayerCollection();
@@ -219,7 +223,7 @@ defineSuite([
         });
 
         it('non-root tiles get neither loadedTerrain nor upsampledTerrain when their parent is not loaded or upsampled', function() {
-            var children = rootTile.getChildren();
+            var children = rootTile.children;
             for (var i = 0; i < children.length; ++i) {
                 children[i].processStateMachine(context, alwaysDeferTerrainProvider, imageryLayerCollection);
                 expect(children[i].loadedTerrain).toBeUndefined();
@@ -234,7 +238,7 @@ defineSuite([
             }, 'root tile to become ready');
 
             runs(function() {
-                var children = rootTile.getChildren();
+                var children = rootTile.children;
                 for (var i = 0; i < children.length; ++i) {
                     children[i].processStateMachine(context, alwaysDeferTerrainProvider, imageryLayerCollection);
                     expect(children[i].loadedTerrain).toBeDefined();
@@ -261,18 +265,18 @@ defineSuite([
             }, 'root tile loaded terrain to be received');
 
             waitsFor(function() {
-                var childTile = rootTile.getChildren()[0];
+                var childTile = rootTile.children[0];
                 childTile.processStateMachine(context, alwaysDeferTerrainProvider, imageryLayerCollection);
                 return childTile.upsampledTerrain.state.value >= TerrainState.RECEIVED;
             }, 'child tile terrain to be upsampled');
 
             runs(function() {
-                expect(rootTile.getChildren()[0].terrainData).toBeDefined();
+                expect(rootTile.children[0].terrainData).toBeDefined();
             });
         });
 
         it('loaded terrain data replaces upsampled terrain data', function() {
-            var childTile = rootTile.getChildren()[0];
+            var childTile = rootTile.children[0];
 
             waitsFor(function() {
                 rootTile.processStateMachine(context, realTerrainProvider, imageryLayerCollection);
@@ -302,8 +306,8 @@ defineSuite([
         });
 
         it('loaded terrain replacing upsampled terrain triggers re-upsampling and re-loading of children', function() {
-            var childTile = rootTile.getChildren()[0];
-            var grandchildTile = childTile.getChildren()[0];
+            var childTile = rootTile.children[0];
+            var grandchildTile = childTile.children[0];
 
             waitsFor(function() {
                 rootTile.processStateMachine(context, realTerrainProvider, imageryLayerCollection);
@@ -333,9 +337,9 @@ defineSuite([
         });
 
         it('improved upsampled terrain triggers re-upsampling of children', function() {
-            var childTile = rootTile.getChildren()[0];
-            var grandchildTile = childTile.getChildren()[0];
-            var greatGrandchildTile = grandchildTile.getChildren()[0];
+            var childTile = rootTile.children[0];
+            var grandchildTile = childTile.children[0];
+            var greatGrandchildTile = grandchildTile.children[0];
 
             waitsFor(function() {
                 rootTile.processStateMachine(context, realTerrainProvider, imageryLayerCollection);
@@ -368,7 +372,7 @@ defineSuite([
         });
 
         it('releases previous upsampled water mask when a real one is loaded', function() {
-            var childTile = rootTile.getChildren()[0];
+            var childTile = rootTile.children[0];
 
             waitsFor(function() {
                 rootTile.processStateMachine(context, realTerrainProvider, imageryLayerCollection);
@@ -398,7 +402,7 @@ defineSuite([
         });
 
         it('upsampled terrain is used when real terrain fails to load', function() {
-            var childTile = rootTile.getChildren()[0];
+            var childTile = rootTile.children[0];
 
             waitsFor(function() {
                 rootTile.processStateMachine(context, realTerrainProvider, imageryLayerCollection);
@@ -408,13 +412,13 @@ defineSuite([
 
             runs(function() {
                 expect(childTile.loadedTerrain).toBeUndefined();
-                expect(childTile.state).toBe(TileState.READY);
+                expect(childTile.state).toBe(TileState.UPSAMPLED_ONLY);
             });
         });
 
         it('child of loaded tile is not re-upsampled or re-loaded if it is already loaded', function() {
-            var childTile = rootTile.getChildren()[0];
-            var grandchildTile = childTile.getChildren()[0];
+            var childTile = rootTile.children[0];
+            var grandchildTile = childTile.children[0];
 
             waitsFor(function() {
                 rootTile.processStateMachine(context, realTerrainProvider, imageryLayerCollection);
@@ -451,9 +455,9 @@ defineSuite([
         });
 
         it('child of upsampled tile is not re-upsampled if it is already loaded', function() {
-            var childTile = rootTile.getChildren()[0];
-            var grandchildTile = childTile.getChildren()[0];
-            var greatGrandchildTile = grandchildTile.getChildren()[0];
+            var childTile = rootTile.children[0];
+            var grandchildTile = childTile.children[0];
+            var greatGrandchildTile = grandchildTile.children[0];
 
             waitsFor(function() {
                 rootTile.processStateMachine(context, realTerrainProvider, imageryLayerCollection);
@@ -483,7 +487,7 @@ defineSuite([
                 childTile.processStateMachine(context, realTerrainProvider, imageryLayerCollection);
                 grandchildTile.processStateMachine(context, alwaysDeferTerrainProvider, imageryLayerCollection);
                 return childTile.state === TileState.READY &&
-                       typeof grandchildTile.upsampledTerrain === 'undefined';
+                       !defined(grandchildTile.upsampledTerrain);
             }, 'child to be loaded and grandchild to be upsampled.');
 
             runs(function() {
@@ -493,11 +497,27 @@ defineSuite([
             });
         });
 
+        it('entirely upsampled tile is marked as such', function() {
+            var childTile = rootTile.children[0];
+
+            waitsFor(function() {
+                rootTile.processStateMachine(context, realTerrainProvider, imageryLayerCollection);
+                childTile.processStateMachine(context, alwaysFailTerrainProvider, imageryLayerCollection);
+                return rootTile.state.value >= TileState.READY.value &&
+                       childTile.state.value >= TileState.READY.value;
+            }, 'child tile to be in its final state');
+
+            runs(function() {
+                expect(rootTile.state).toBe(TileState.READY);
+                expect(childTile.state).toBe(TileState.UPSAMPLED_ONLY);
+            });
+        });
+
         it('uses shared water mask texture for all water', function() {
             var allWaterTerrainProvider = {
                     requestTileGeometry : function(x, y, level) {
                         var real = realTerrainProvider.requestTileGeometry(x, y, level);
-                        if (typeof real === 'undefined') {
+                        if (!defined(real)) {
                             return real;
                         }
 
@@ -506,9 +526,7 @@ defineSuite([
                             return terrainData;
                         });
                     },
-                    getTilingScheme : function() {
-                        return realTerrainProvider.getTilingScheme();
-                    },
+                    tilingScheme :  realTerrainProvider.tilingScheme,
                     hasWaterMask : function() {
                         return realTerrainProvider.hasWaterMask();
                     }
@@ -519,7 +537,7 @@ defineSuite([
                 return rootTile.state === TileState.READY;
             }, 'root tile to be ready');
 
-            var childTile = rootTile.getChildren()[0];
+            var childTile = rootTile.children[0];
 
             waitsFor(function() {
                 childTile.processStateMachine(context, allWaterTerrainProvider, imageryLayerCollection);
@@ -536,7 +554,7 @@ defineSuite([
             var allLandTerrainProvider = {
                     requestTileGeometry : function(x, y, level) {
                         var real = realTerrainProvider.requestTileGeometry(x, y, level);
-                        if (typeof real === 'undefined') {
+                        if (!defined(real)) {
                             return real;
                         }
 
@@ -545,9 +563,7 @@ defineSuite([
                             return terrainData;
                         });
                     },
-                    getTilingScheme : function() {
-                        return realTerrainProvider.getTilingScheme();
-                    },
+                    tilingScheme : realTerrainProvider.tilingScheme,
                     hasWaterMask : function() {
                         return realTerrainProvider.hasWaterMask();
                     }
@@ -558,7 +574,7 @@ defineSuite([
                 return rootTile.state === TileState.READY;
             }, 'root tile to be ready');
 
-            var childTile = rootTile.getChildren()[0];
+            var childTile = rootTile.children[0];
 
             waitsFor(function() {
                 childTile.processStateMachine(context, allLandTerrainProvider, imageryLayerCollection);

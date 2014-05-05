@@ -1,11 +1,7 @@
 /*global define*/
 define([
-        '../Core/DeveloperError',
-        '../Core/Cartesian2',
         './SceneMode'
     ], function(
-        DeveloperError,
-        Cartesian2,
         SceneMode) {
     "use strict";
 
@@ -19,10 +15,6 @@ define([
      * @constructor
      */
     var FrameState = function(creditDisplay) {
-        if (typeof creditDisplay === 'undefined') {
-            throw new DeveloperError('credit display is required');
-        }
-
         /**
          * The current mode of the scene.
          * @type {SceneMode}
@@ -84,32 +76,19 @@ define([
          */
         this.occluder = undefined;
 
-        /**
-         * The dimensions of the canvas.
-         * @type {Cartesian2}
-         * @default Cartesian2(0.0, 0.0)
-         */
-        this.canvasDimensions = new Cartesian2();
-
         this.passes = {
             /**
-             * <code>true</code> if the primitive should update for a color pass, <code>false</code> otherwise.
+             * <code>true</code> if the primitive should update for a render pass, <code>false</code> otherwise.
              * @type {Boolean}
              * @default false
              */
-            color : false,
+            render : false,
             /**
              * <code>true</code> if the primitive should update for a picking pass, <code>false</code> otherwise.
              * @type {Boolean}
              * @default false
              */
-            pick : false,
-            /**
-             * <code>true</code> if the primitive should update for an overlay pass, <code>false</code> otherwise.
-             * @type {Boolean}
-             * @default false
-             */
-            overlay : false
+            pick : false
         };
 
         /**
@@ -117,6 +96,25 @@ define([
         * @type {CreditDisplay}
         */
         this.creditDisplay = creditDisplay;
+
+        /**
+         * An array of functions to be called at the end of the frame.  This array
+         * will be cleared after each frame.
+         * <p>
+         * This allows queueing up events in <code>update</code> functions and
+         * firing them at a time when the subscribers are free to change the
+         * scene state, e.g., manipulate the camera, instead of firing events
+         * directly in <code>update</code> functions.
+         * </p>
+         *
+         * @type {Array}
+         *
+         * @example
+         * frameState.afterRender.push(function() {
+         *   // take some action, raise an event, etc.
+         * });
+         */
+        this.afterRender = [];
     };
 
     return FrameState;

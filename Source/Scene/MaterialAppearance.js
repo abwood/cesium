@@ -1,6 +1,7 @@
 /*global define*/
 define([
         '../Core/defaultValue',
+        '../Core/defined',
         '../Core/freezeObject',
         '../Core/VertexFormat',
         './Material',
@@ -13,6 +14,7 @@ define([
         '../Shaders/Appearances/AllMaterialAppearanceFS'
     ], function(
         defaultValue,
+        defined,
         freezeObject,
         VertexFormat,
         Material,
@@ -33,7 +35,7 @@ define([
      * @constructor
      *
      * @param {Boolean} [options.flat=false] When <code>true</code>, flat shading is used in the fragment shader, which means lighting is not taking into account.
-     * @param {Boolean} [options.faceForward=false] When <code>true</code>, the fragment shader flips the surface normal as needed to ensure that the normal faces the viewer to avoid dark spots.  This is useful when both sides of a geometry should be shaded like {@link WallGeometry}.
+     * @param {Boolean} [options.faceForward=!options.closed] When <code>true</code>, the fragment shader flips the surface normal as needed to ensure that the normal faces the viewer to avoid dark spots.  This is useful when both sides of a geometry should be shaded like {@link WallGeometry}.
      * @param {Boolean} [options.translucent=true] When <code>true</code>, the geometry is expected to appear translucent so {@link MaterialAppearance#renderState} has alpha blending enabled.
      * @param {Boolean} [options.closed=false] When <code>true</code>, the geometry is expected to be closed so {@link MaterialAppearance#renderState} has backface culling enabled.
      * @param {MaterialAppearance.MaterialSupport} [options.materialSupport=MaterialAppearance.MaterialSupport.TEXTURED] The type of materials that will be supported.
@@ -43,15 +45,15 @@ define([
      * @param {RenderState} [options.renderState=undefined] Optional render state to override the default render state.
      *
      * @example
-     * var primitive = new Primitive({
-     *   geometryInstances : new GeometryInstance({
-     *     geometry : new WallGeometry({
-            materialSupport :  MaterialAppearance.MaterialSupport.BASIC.vertexFormat,
+     * var primitive = new Cesium.Primitive({
+     *   geometryInstances : new Cesium.GeometryInstance({
+     *     geometry : new Cesium.WallGeometry({
+            materialSupport :  Cesium.MaterialAppearance.MaterialSupport.BASIC.vertexFormat,
      *       // ...
      *     })
      *   }),
-     *   appearance : new MaterialAppearance({
-     *     material : Material.fromType(scene.getContext(), 'Color'),
+     *   appearance : new Cesium.MaterialAppearance({
+     *     material : Cesium.Material.fromType('Color'),
      *     faceForward : true
      *   })
      * });
@@ -75,7 +77,7 @@ define([
          *
          * @see <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>
          */
-        this.material = (typeof options.material !== 'undefined') ? options.material : Material.fromType(undefined, Material.ColorType);
+        this.material = (defined(options.material)) ? options.material : Material.fromType(Material.ColorType);
 
         /**
          * The GLSL source code for the vertex shader.
@@ -154,10 +156,8 @@ define([
          * shaded like {@link WallGeometry}.
          *
          * @readonly
-         *
-         * @default false
          */
-        this.faceForward = defaultValue(options.faceForward, false);
+        this.faceForward = defaultValue(options.faceForward, !closed);
 
         /**
          * When <code>true</code>, the geometry is expected to appear translucent so
@@ -188,9 +188,29 @@ define([
      *
      * @memberof MaterialAppearance
      *
-     * @return String The full GLSL fragment shader source.
+     * @returns String The full GLSL fragment shader source.
      */
     MaterialAppearance.prototype.getFragmentShaderSource = Appearance.prototype.getFragmentShaderSource;
+
+    /**
+     * Determines if the geometry is translucent based on {@link MaterialAppearance#translucent} and {@link Material#isTranslucent}.
+     *
+     * @memberof MaterialAppearance
+     *
+     * @returns {Boolean} <code>true</code> if the appearance is translucent.
+     */
+    MaterialAppearance.prototype.isTranslucent = Appearance.prototype.isTranslucent;
+
+    /**
+     * Creates a render state.  This is not the final {@link RenderState} instance; instead,
+     * it can contain a subset of render state properties identical to <code>renderState</code>
+     * passed to {@link Context#createRenderState}.
+     *
+     * @memberof MaterialAppearance
+     *
+     * @returns {Object} The render state.
+     */
+    MaterialAppearance.prototype.getRenderState = Appearance.prototype.getRenderState;
 
     /**
      * Determines the type of {@link Material} that is supported by a

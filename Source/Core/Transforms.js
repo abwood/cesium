@@ -1,6 +1,7 @@
 /*global define*/
 define([
         './defaultValue',
+        './defined',
         './DeveloperError',
         './Iau2006XysData',
         './Iau2006XysSample',
@@ -18,6 +19,7 @@ define([
     ],
     function(
         defaultValue,
+        defined,
         DeveloperError,
         Iau2006XysData,
         Iau2006XysSample,
@@ -59,26 +61,26 @@ define([
      * @param {Cartesian3} origin The center point of the local reference frame.
      * @param {Ellipsoid} [ellipsoid=Ellipsoid.WGS84] The ellipsoid whose fixed frame is used in the transformation.
      * @param {Matrix4} [result] The object onto which to store the result.
-     * @return {Matrix4} The modified result parameter or a new Matrix4 instance if none was provided.
-     *
-     * @exception {DeveloperError} origin is required.
+     * @returns {Matrix4} The modified result parameter or a new Matrix4 instance if none was provided.
      *
      * @example
      * // Get the transform from local east-north-up at cartographic (0.0, 0.0) to Earth's fixed frame.
-     * var ellipsoid = Ellipsoid.WGS84;
-     * var center = ellipsoid.cartographicToCartesian(Cartographic.ZERO);
-     * var transform = Transforms.eastNorthUpToFixedFrame(center);
+     * var ellipsoid = Cesium.Ellipsoid.WGS84;
+     * var center = ellipsoid.cartographicToCartesian(Cesium.Cartographic.ZERO);
+     * var transform = Cesium.Transforms.eastNorthUpToFixedFrame(center);
      */
     Transforms.eastNorthUpToFixedFrame = function(origin, ellipsoid, result) {
-        if (typeof origin === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(origin)) {
             throw new DeveloperError('origin is required.');
         }
+        //>>includeEnd('debug');
 
         // If x and y are zero, assume origin is at a pole, which is a special case.
         if (CesiumMath.equalsEpsilon(origin.x, 0.0, CesiumMath.EPSILON14) &&
             CesiumMath.equalsEpsilon(origin.y, 0.0, CesiumMath.EPSILON14)) {
             var sign = CesiumMath.sign(origin.z);
-            if (typeof result === 'undefined') {
+            if (!defined(result)) {
                 return new Matrix4(
                         0.0, -sign,  0.0, origin.x,
                         1.0,   0.0,  0.0, origin.y,
@@ -116,9 +118,9 @@ define([
         tangent.z = 0.0;
         Cartesian3.normalize(tangent, tangent);
 
-        normal.cross(tangent, bitangent);
+        Cartesian3.cross(normal, tangent, bitangent);
 
-        if (typeof result === 'undefined') {
+        if (!defined(result)) {
             return new Matrix4(
                     tangent.x, bitangent.x, normal.x, origin.x,
                     tangent.y, bitangent.y, normal.y, origin.y,
@@ -163,26 +165,26 @@ define([
      * @param {Cartesian3} origin The center point of the local reference frame.
      * @param {Ellipsoid} [ellipsoid=Ellipsoid.WGS84] The ellipsoid whose fixed frame is used in the transformation.
      * @param {Matrix4} [result] The object onto which to store the result.
-     * @return {Matrix4} The modified result parameter or a new Matrix4 instance if none was provided.
-     *
-     * @exception {DeveloperError} origin is required.
+     * @returns {Matrix4} The modified result parameter or a new Matrix4 instance if none was provided.
      *
      * @example
      * // Get the transform from local north-east-down at cartographic (0.0, 0.0) to Earth's fixed frame.
-     * var ellipsoid = Ellipsoid.WGS84;
-     * var center = ellipsoid.cartographicToCartesian(Cartographic.ZERO);
-     * var transform = Transforms.northEastDownToFixedFrame(center);
+     * var ellipsoid = Cesium.Ellipsoid.WGS84;
+     * var center = ellipsoid.cartographicToCartesian(Cesium.Cartographic.ZERO);
+     * var transform = Cesium.Transforms.northEastDownToFixedFrame(center);
      */
     Transforms.northEastDownToFixedFrame = function(origin, ellipsoid, result) {
-        if (typeof origin === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(origin)) {
             throw new DeveloperError('origin is required.');
         }
+        //>>includeEnd('debug');
 
         if (CesiumMath.equalsEpsilon(origin.x, 0.0, CesiumMath.EPSILON14) &&
             CesiumMath.equalsEpsilon(origin.y, 0.0, CesiumMath.EPSILON14)) {
             // The poles are special cases.  If x and y are zero, assume origin is at a pole.
             var sign = CesiumMath.sign(origin.z);
-            if (typeof result === 'undefined') {
+            if (!defined(result)) {
                 return new Matrix4(
                   -sign, 0.0,   0.0, origin.x,
                     0.0, 1.0,   0.0, origin.y,
@@ -220,9 +222,9 @@ define([
         tangent.z = 0.0;
         Cartesian3.normalize(tangent, tangent);
 
-        normal.cross(tangent, bitangent);
+        Cartesian3.cross(normal, tangent, bitangent);
 
-        if (typeof result === 'undefined') {
+        if (!defined(result)) {
             return new Matrix4(
                     bitangent.x, tangent.x, -normal.x, origin.x,
                     bitangent.y, tangent.y, -normal.y, origin.y,
@@ -264,26 +266,25 @@ define([
      *
      * @param {JulianDate} date The time at which to compute the rotation matrix.
      * @param {Matrix3} [result] The object onto which to store the result.
-     * @return {Matrix3} The modified result parameter or a new Matrix3 instance if none was provided.
-     *
-     * @exception {DeveloperError} date is required.
+     * @returns {Matrix3} The modified result parameter or a new Matrix3 instance if none was provided.
      *
      * @example
      * //Set the view to in the inertial frame.
      * function updateAndRender() {
-     *     var now = new JulianDate();
+     *     var now = new Cesium.JulianDate();
      *     scene.initializeFrame();
-     *     scene.setSunPosition(Simon1994PlanetaryPositions.ComputeSunPositionInEarthInertialFrame(now));
-     *     scene.getCamera().transform = Matrix4.fromRotationTranslation(Transforms.computeTemeToPseudoFixedMatrix(now), Cartesian3.ZERO);
+     *     scene.camera.transform = Cesium.Matrix4.fromRotationTranslation(Cesium.Transforms.computeTemeToPseudoFixedMatrix(now), Cesium.Cartesian3.ZERO);
      *     scene.render();
-     *     requestAnimationFrame(updateAndRender);
+     *     Cesium.requestAnimationFrame(updateAndRender);
      * }
      * updateAndRender();
      */
     Transforms.computeTemeToPseudoFixedMatrix = function (date, result) {
-        if (typeof date === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(date)) {
             throw new DeveloperError('date is required.');
         }
+        //>>includeEnd('debug');
 
         // GMST is actually computed using UT1.  We're using UTC as an approximation of UT1.
         // We do not want to use the function like convertTaiToUtc in JulianDate because
@@ -309,7 +310,7 @@ define([
         var cosGha = Math.cos(gha);
         var sinGha = Math.sin(gha);
 
-        if (typeof result === 'undefined') {
+        if (!defined(result)) {
             return new Matrix3(cosGha, sinGha, 0.0,
                               -sinGha, cosGha, 0.0,
                                   0.0,    0.0, 1.0);
@@ -371,7 +372,7 @@ define([
      * @see when
      *
      * @example
-     * var interval = new TimeInterval(...);
+     * var interval = new Cesium.TimeInterval(...);
      * when(preloadIcrfFixed(interval), function() {
      *     // the data is now loaded
      * });
@@ -399,39 +400,38 @@ define([
      * @param {JulianDate} date The time at which to compute the rotation matrix.
      * @param {Matrix3} [result] The object onto which to store the result.  If this parameter is
      *                  not specified, a new instance is created and returned.
-     * @return {Matrix3} The rotation matrix, or undefined if the data necessary to do the
+     * @returns {Matrix3} The rotation matrix, or undefined if the data necessary to do the
      *                   transformation is not yet loaded.
-     *
-     * @exception {DeveloperError} date is required.
      *
      * @see Transforms.preloadIcrfFixed
      *
      * @example
      * //Set the view to the inertial frame.
      * function updateAndRender() {
-     *     var now = new JulianDate();
+     *     var now = new Cesium.JulianDate();
      *     scene.initializeFrame();
-     *     scene.setSunPosition(Simon1994PlanetaryPositions.ComputeSunPositionInEarthInertialFrame(now));
-     *     var icrfToFixed = Transforms.computeIcrfToFixedMatrix(now);
-     *     if (typeof icrfToFixed !== 'undefined') {
-     *         scene.getCamera().transform = Matrix4.fromRotationTranslation(icrfToFixed, Cartesian3.ZERO);
+     *     var icrfToFixed = Cesium.Transforms.computeIcrfToFixedMatrix(now);
+     *     if (Cesium.defined(icrfToFixed)) {
+     *         scene.camera.transform = Cesium.Matrix4.fromRotationTranslation(icrfToFixed, Cesium.Cartesian3.ZERO);
      *     }
      *     scene.render();
-     *     requestAnimationFrame(updateAndRender);
+     *     Cesium.requestAnimationFrame(updateAndRender);
      * }
      * updateAndRender();
      */
     Transforms.computeIcrfToFixedMatrix = function(date, result) {
-        if (typeof date === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(date)) {
             throw new DeveloperError('date is required.');
         }
+        //>>includeEnd('debug');
 
         var fixedToIcrfMtx = Transforms.computeFixedToIcrfMatrix(date, result);
-        if (typeof fixedToIcrfMtx === 'undefined') {
+        if (!defined(fixedToIcrfMtx)) {
             return undefined;
         }
 
-        return fixedToIcrfMtx.transpose(result);
+        return Matrix3.transpose(fixedToIcrfMtx, result);
     };
 
     var xysScratch = new Iau2006XysSample(0.0, 0.0, 0.0);
@@ -450,31 +450,31 @@ define([
      * @param {JulianDate} date The time at which to compute the rotation matrix.
      * @param {Matrix3} [result] The object onto which to store the result.  If this parameter is
      *                  not specified, a new instance is created and returned.
-     * @return {Matrix3} The rotation matrix, or undefined if the data necessary to do the
+     * @returns {Matrix3} The rotation matrix, or undefined if the data necessary to do the
      *                   transformation is not yet loaded.
-     *
-     * @exception {DeveloperError} date is required.
      *
      * @see Transforms.preloadIcrfFixed
      *
      * @example
      * // Transform a point from the ICRF axes to the Fixed axes.
-     * var now = new JulianDate();
-     * var pointInFixed = new Cartesian3(...);
-     * var fixedToIcrf = Transforms.computeIcrfToFixedMatrix(now);
+     * var now = new Cesium.JulianDate();
+     * var pointInFixed = new Cesium.Cartesian3(...);
+     * var fixedToIcrf = Cesium.Transforms.computeIcrfToFixedMatrix(now);
      * var pointInInertial;
-     * if (typeof fixedToIcrf !== 'undefined') {
-     *     pointInInertial = fixedToIcrf.multiplyByVector(pointInFixed);
+     * if (Cesium.defined(fixedToIcrf)) {
+     *     pointInInertial = Cesium.Matrix3.multiplyByVector(fixedToIcrf, pointInFixed);
      * }
      */
     Transforms.computeFixedToIcrfMatrix = function(date, result) {
-        if (typeof date === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(date)) {
             throw new DeveloperError('date is required.');
         }
+        //>>includeEnd('debug');
 
         // Compute pole wander
         var eop = Transforms.earthOrientationParameters.compute(date, eopScratch);
-        if (typeof eop === 'undefined') {
+        if (!defined(eop)) {
             return undefined;
         }
 
@@ -487,7 +487,7 @@ define([
         var secondTT = date.getSecondsOfDay() + ttMinusTai;
 
         var xys = Transforms.iau2006XysData.computeXysRadians(dayTT, secondTT, xysScratch);
-        if (typeof xys === 'undefined') {
+        if (!defined(xys)) {
             return undefined;
         }
 
@@ -509,7 +509,7 @@ define([
         rotation1[8] = 1 - a * (x * x + y * y);
 
         var rotation2 = Matrix3.fromRotationZ(-xys.s, rotation2Scratch);
-        var matrixQ = rotation1.multiply(rotation2, rotation1Scratch);
+        var matrixQ = Matrix3.multiply(rotation1, rotation2, rotation1Scratch);
 
         // Similar to TT conversions above
         // It's possible here that secondTT could roll over 86400
@@ -535,7 +535,7 @@ define([
         var earthRotation = Matrix3.fromRotationZ(era, rotation2Scratch);
 
         // pseudoFixed to ICRF
-        var pfToIcrf = matrixQ.multiply(earthRotation, rotation1Scratch);
+        var pfToIcrf = Matrix3.multiply(matrixQ, earthRotation, rotation1Scratch);
 
         // Compute pole wander matrix
         var cosxp = Math.cos(eop.xPoleWander);
@@ -562,7 +562,7 @@ define([
         fToPfMtx[7] = sinyp * cossp - cosyp * sinxp * sinsp;
         fToPfMtx[8] = cosyp * cosxp;
 
-        return pfToIcrf.multiply(fToPfMtx, result);
+        return Matrix3.multiply(pfToIcrf, fToPfMtx, result);
     };
 
     var pointToWindowCoordinatesTemp = new Cartesian4();
@@ -576,33 +576,31 @@ define([
      * @param {Matrix4} viewportTransformation The 4x4 viewport transformation.
      * @param {Cartesian3} point The point to transform.
      * @param {Cartesian2} [result] The object onto which to store the result.
-     * @return {Cartesian2} The modified result parameter or a new Cartesian2 instance if none was provided.
+     * @returns {Cartesian2} The modified result parameter or a new Cartesian2 instance if none was provided.
      *
-     * @exception {DeveloperError} modelViewProjectionMatrix is required.
-     * @exception {DeveloperError} viewportTransformation is required.
-     * @exception {DeveloperError} point is required.
-     *
-     * @see UniformState#getModelViewProjection
+     * @see UniformState#modelViewProjection
      * @see czm_modelViewProjection
-     * @see UniformState#getViewportTransformation
+     * @see UniformState#viewportTransformation
      * @see czm_viewportTransformation
      */
     Transforms.pointToWindowCoordinates = function (modelViewProjectionMatrix, viewportTransformation, point, result) {
-        if (typeof modelViewProjectionMatrix === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(modelViewProjectionMatrix)) {
             throw new DeveloperError('modelViewProjectionMatrix is required.');
         }
 
-        if (typeof viewportTransformation === 'undefined') {
+        if (!defined(viewportTransformation)) {
             throw new DeveloperError('viewportTransformation is required.');
         }
 
-        if (typeof point === 'undefined') {
+        if (!defined(point)) {
             throw new DeveloperError('point is required.');
         }
+        //>>includeEnd('debug');
 
         var tmp = pointToWindowCoordinatesTemp;
 
-        Matrix4.multiplyByPoint(modelViewProjectionMatrix, point, tmp);
+        Matrix4.multiplyByVector(modelViewProjectionMatrix, Cartesian4.fromElements(point.x, point.y, point.z, 1, tmp), tmp);
         Cartesian4.multiplyByScalar(tmp, 1.0 / tmp.w, tmp);
         Matrix4.multiplyByVector(viewportTransformation, tmp, tmp);
         return Cartesian2.fromCartesian4(tmp, result);

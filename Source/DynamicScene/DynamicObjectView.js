@@ -1,6 +1,7 @@
 /*global define*/
 define([
         '../Core/defaultValue',
+        '../Core/defined',
         '../Core/DeveloperError',
         '../Core/Math',
         '../Core/Cartesian2',
@@ -16,6 +17,7 @@ define([
         '../Scene/SceneMode'
        ], function(
          defaultValue,
+         defined,
          DeveloperError,
          CesiumMath,
          Cartesian2,
@@ -31,7 +33,7 @@ define([
          SceneMode) {
     "use strict";
 
-    function update2D(that, camera, objectChanged, offset, positionProperty, time, projection) {
+    function update2D(that, camera, objectChanged, offset, positionProperty, time, ellipsoid, projection) {
         var viewDistance;
         var scene = that.scene;
         var modeChanged = scene.mode !== that._mode;
@@ -39,24 +41,20 @@ define([
         if (modeChanged) {
             that._mode = scene.mode;
             that._screenSpaceCameraController.enableTranslate = false;
-            viewDistance = offset.magnitude();
+            viewDistance = Cartesian3.magnitude(offset);
         } else if (objectChanged) {
-            viewDistance = offset.magnitude();
+            viewDistance = Cartesian3.magnitude(offset);
         } else {
             viewDistance = camera.position.z;
         }
 
-        var cartographic = positionProperty.getValueCartographic(time, that._lastCartographic);
-        if (typeof cartographic !== 'undefined') {
+        var cartesian = positionProperty.getValue(time, that._lastCartesian);
+        if (defined(cartesian)) {
+            var cartographic = ellipsoid.cartesianToCartographic(cartesian, that._lastCartographic);
             //We are assigning the position of the camera, not of the object, so modify the height appropriately.
             cartographic.height = viewDistance;
             if (objectChanged || modeChanged) {
-                camera.controller.setPositionCartographic(cartographic);
-
-                //Set rotation to match offset.
-                Cartesian3.normalize(offset, camera.up);
-                Cartesian3.negate(camera.up, camera.up);
-                Cartesian3.cross(camera.direction, camera.up, camera.right);
+                camera.setPositionCartographic(cartographic);
 
                 //z is always zero in 2D for up and right
                 camera.up.z = 0;
@@ -88,20 +86,20 @@ define([
     function update3D(that, camera, objectChanged, offset, positionProperty, time, ellipsoid) {
         update3DController(that, camera, objectChanged, offset);
 
-        var cartesian = positionProperty.getValueCartesian(time, that._lastCartesian);
-        if (typeof cartesian !== 'undefined') {
+        var cartesian = positionProperty.getValue(time, that._lastCartesian);
+        if (defined(cartesian)) {
             var successful = false;
 
             // The time delta was determined based on how fast satellites move compared to vehicles near the surface.
             // Slower moving vehicles will most likely default to east-north-up, while faster ones will be LVLH.
             var deltaTime = time.addSeconds(0.01);
-            var deltaCartesian = positionProperty.getValueCartesian(deltaTime, update3DCartesian3Scratch1);
-            if (typeof deltaCartesian !== 'undefined' && !Cartesian3.equalsEpsilon(cartesian, deltaCartesian, CesiumMath.EPSILON6)) {
+            var deltaCartesian = positionProperty.getValue(deltaTime, update3DCartesian3Scratch1);
+            if (defined(deltaCartesian) && !Cartesian3.equalsEpsilon(cartesian, deltaCartesian, CesiumMath.EPSILON6)) {
                 var toInertial = Transforms.computeFixedToIcrfMatrix(time, update3DMatrix3Scratch1);
                 var toInertialDelta = Transforms.computeFixedToIcrfMatrix(deltaTime, update3DMatrix3Scratch2);
                 var toFixed;
 
-                if (typeof toInertial === 'undefined' || typeof toInertialDelta === 'undefined') {
+                if (!defined(toInertial) || !defined(toInertialDelta)) {
                     toFixed = Transforms.computeTemeToPseudoFixedMatrix(time, update3DMatrix3Scratch3);
                     toInertial = Matrix3.transpose(toFixed, update3DMatrix3Scratch1);
                     toInertialDelta = Transforms.computeTemeToPseudoFixedMatrix(deltaTime, update3DMatrix3Scratch2);
@@ -159,7 +157,7 @@ define([
                 camera.transform = Transforms.eastNorthUpToFixedFrame(cartesian, ellipsoid, update3DTransform);
             }
 
-            that._screenSpaceCameraController.setEllipsoid(Ellipsoid.UNIT_SPHERE);
+            that._screenSpaceCameraController.ellipsoid = Ellipsoid.UNIT_SPHERE;
 
             var position = camera.position;
             Cartesian3.clone(position, that._lastOffset);
@@ -172,22 +170,22 @@ define([
         update3DController(that, camera, objectChanged, offset);
 
         //The swizzling here is intentional because ColumbusView uses a different coordinate system.
-        var cartographic = positionProperty.getValueCartographic(time, that._lastCartographic);
-        if (typeof cartographic !== 'undefined') {
+        var cartesian = positionProperty.getValue(time, that._lastCartesian);
+        if (defined(cartesian)) {
+            var cartographic = ellipsoid.cartesianToCartographic(cartesian, that._lastCartographic);
+
             var projectedPosition = projection.project(cartographic);
             updateColumbusCartesian4.x = projectedPosition.z;
             updateColumbusCartesian4.y = projectedPosition.x;
             updateColumbusCartesian4.z = projectedPosition.y;
 
             var tranform = camera.transform;
-            tranform.setColumn(3, updateColumbusCartesian4, tranform);
+            Matrix4.setColumn(tranform, 3, updateColumbusCartesian4, tranform);
 
             var controller = that._screenSpaceCameraController;
             controller.enableTranslate = false;
-            controller.setEllipsoid(Ellipsoid.UNIT_SPHERE);
+            controller.ellipsoid = Ellipsoid.UNIT_SPHERE;
             controller.columbusViewMode = CameraColumbusViewMode.LOCKED;
-
-            camera.controller.constrainedAxis = Cartesian3.UNIT_Z;
 
             var position = camera.position;
             Cartesian3.clone(position, that._lastOffset);
@@ -200,10 +198,9 @@ define([
 
     function update3DController(that, camera, objectChanged, offset) {
         var scene = that.scene;
-        camera.controller.constrainedAxis = Cartesian3.UNIT_Z;
 
         if (objectChanged) {
-            camera.controller.lookAt(offset, Cartesian3.ZERO, Cartesian3.UNIT_Z);
+            camera.lookAt(offset, Cartesian3.ZERO, Cartesian3.UNIT_Z);
         } else if (scene.mode !== that._mode) {
             that._mode = scene.mode;
 
@@ -225,12 +222,12 @@ define([
                 first2dUp.x = 0.0;
                 first2dUp.y = 0.0;
 
-                var theta = startTheta - endTheta;
+                var theta = endTheta - startTheta;
                 var rotation = Quaternion.fromAxisAngle(Cartesian3.UNIT_Z, theta, update3DControllerQuaternion);
-                Matrix3.fromQuaternion(rotation, update3DControllerMatrix3).multiplyByVector(offset, offset);
+                Matrix3.multiplyByVector(Matrix3.fromQuaternion(rotation, update3DControllerMatrix3), offset, offset);
             }
-            offset.normalize(offset).multiplyByScalar(that._lastDistance, offset);
-            camera.controller.lookAt(offset, Cartesian3.ZERO, Cartesian3.UNIT_Z);
+            Cartesian3.multiplyByScalar(Cartesian3.normalize(offset, offset), that._lastDistance, offset);
+            camera.lookAt(offset, Cartesian3.ZERO, Cartesian3.UNIT_Z);
         }
     }
 
@@ -239,7 +236,7 @@ define([
 
     /**
      * A utility object for tracking an object with the camera.
-     * @alias DynamicObject
+     * @alias DynamicObjectView
      * @constructor
      *
      * @param {DynamicObject} dynamicObject The object to track with the camera.
@@ -293,42 +290,36 @@ define([
     * to the latest settings.
     * @param {JulianDate} time The current animation time.
     *
-    * @exception {DeveloperError} time is required.
-    * @exception {DeveloperError} DynamicObjectView.scene is required.
-    * @exception {DeveloperError} DynamicObjectView.dynamicObject is required.
-    * @exception {DeveloperError} DynamicObjectView.ellipsoid is required.
-    * @exception {DeveloperError} DynamicObjectView.dynamicObject.position is required.
     */
     DynamicObjectView.prototype.update = function(time) {
-        if (typeof time === 'undefined') {
+        var scene = this.scene;
+        var dynamicObject = this.dynamicObject;
+        var ellipsoid = this.ellipsoid;
+
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(time)) {
             throw new DeveloperError('time is required.');
         }
-
-        var scene = this.scene;
-        if (typeof scene === 'undefined') {
+        if (!defined(scene)) {
             throw new DeveloperError('DynamicObjectView.scene is required.');
         }
+        if (!defined(dynamicObject)) {
+            throw new DeveloperError('DynamicObjectView.dynamicObject is required.');
+        }
+        if (!defined(ellipsoid)) {
+            throw new DeveloperError('DynamicObjectView.ellipsoid is required.');
+        }
+        if (!defined(dynamicObject.position)) {
+            throw new DeveloperError('dynamicObject.position is required.');
+        }
+        //>>includeEnd('debug');
 
         if (scene !== this._lastScene) {
             this._lastScene = scene;
-            this._screenSpaceCameraController = scene.getScreenSpaceCameraController();
+            this._screenSpaceCameraController = scene.screenSpaceCameraController;
         }
 
-        var dynamicObject = this.dynamicObject;
-        if (typeof dynamicObject === 'undefined') {
-            throw new DeveloperError('DynamicObjectView.dynamicObject is required.');
-        }
-
-        var ellipsoid = this.ellipsoid;
-        if (typeof ellipsoid === 'undefined') {
-            throw new DeveloperError('DynamicObjectView.ellipsoid is required.');
-        }
-
-        var positionProperty = this.dynamicObject.position;
-        if (typeof positionProperty === 'undefined') {
-            throw new DeveloperError('dynamicObject.position is required.');
-        }
-
+        var positionProperty = dynamicObject.position;
         var objectChanged = dynamicObject !== this._lastDynamicObject;
 
         //Determine what the current camera offset should be, this is used
@@ -339,7 +330,7 @@ define([
             this._lastDynamicObject = dynamicObject;
 
             var viewFromProperty = this.dynamicObject.viewFrom;
-            if (typeof viewFromProperty === 'undefined' || typeof viewFromProperty.getValue(time, offset) === 'undefined') {
+            if (!defined(viewFromProperty) || !defined(viewFromProperty.getValue(time, offset))) {
                 Cartesian3.clone(dynamicObjectViewDefaultOffset, offset);
             }
 
@@ -349,13 +340,13 @@ define([
             first2dUp.x = first2dUp.y = 0;
             last2dUp.x = last2dUp.y = 0;
             Cartesian3.clone(offset, this._lastOffset);
-            this._lastDistance = offset.magnitude();
+            this._lastDistance = Cartesian3.magnitude(offset);
 
             //If looking straight down, move the camera slightly south the avoid gimbal lock.
-            if (Cartesian3.equals(offset.normalize(dynamicObjectViewCartesian3Scratch), Cartesian3.UNIT_Z)) {
+            if (Cartesian3.equals(Cartesian3.normalize(offset, dynamicObjectViewCartesian3Scratch), Cartesian3.UNIT_Z)) {
                 offset.y -= 0.01;
             }
-        } else if (typeof this._lastOffset !== 'undefined') {
+        } else if (defined(this._lastOffset)) {
             offset = this._lastOffset;
         } else {
             Cartesian3.clone(dynamicObjectViewDefaultOffset, offset);
@@ -363,11 +354,11 @@ define([
 
         var mode = scene.mode;
         if (mode === SceneMode.SCENE2D) {
-            update2D(this, scene.getCamera(), objectChanged, offset, positionProperty, time, scene.scene2D.projection);
+            update2D(this, scene.camera, objectChanged, offset, positionProperty, time, ellipsoid, scene.scene2D.projection);
         } else if (mode === SceneMode.SCENE3D) {
-            update3D(this, scene.getCamera(), objectChanged, offset, positionProperty, time, ellipsoid);
+            update3D(this, scene.camera, objectChanged, offset, positionProperty, time, ellipsoid);
         } else if (mode === SceneMode.COLUMBUS_VIEW) {
-            updateColumbus(this, scene.getCamera(), objectChanged, offset, positionProperty, time, ellipsoid, scene.scene2D.projection);
+            updateColumbus(this, scene.camera, objectChanged, offset, positionProperty, time, ellipsoid, scene.scene2D.projection);
         }
     };
 

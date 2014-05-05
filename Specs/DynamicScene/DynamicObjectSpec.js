@@ -1,6 +1,7 @@
 /*global defineSuite*/
 defineSuite([
              'DynamicScene/DynamicObject',
+             'DynamicScene/ConstantProperty',
              'Core/JulianDate',
              'Core/Cartesian3',
              'Core/Quaternion',
@@ -8,6 +9,7 @@ defineSuite([
              'Core/TimeInterval'
             ], function(
               DynamicObject,
+              ConstantProperty,
               JulianDate,
               Cartesian3,
               Quaternion,
@@ -30,7 +32,7 @@ defineSuite([
         var dynamicObject = new DynamicObject('someId');
         expect(function() {
             dynamicObject.isAvailable();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('constructor creates a unique id if one is not provided.', function() {
@@ -40,209 +42,132 @@ defineSuite([
         expect(object.id).toNotEqual(object2.id);
     });
 
-    it('processCzmlPacketPosition works.', function() {
-        var packet = {
-            'position' : {
-                'cartesian' : [1.0, 2.0, 3.0]
-            }
-        };
-
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicObject.processCzmlPacketPosition(dynamicObject, packet)).toEqual(true);
-        expect(dynamicObject.position.getValueCartesian(Iso8601.MINIMUM_VALUE)).toEqual(new Cartesian3(1.0, 2.0, 3.0));
-    });
-
-    it('processCzmlPacketPosition returns false if no data.', function() {
-        var packet = {};
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicObject.processCzmlPacketPosition(dynamicObject, packet)).toEqual(false);
-        expect(dynamicObject.position).toBeUndefined();
-    });
-
-    it('processCzmlPacketOrientation works.', function() {
-        var packet = {
-            'orientation' : {
-                'unitQuaternion' : [0.0, 0.0, 0.0, 1.0]
-            }
-        };
-
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicObject.processCzmlPacketOrientation(dynamicObject, packet)).toEqual(true);
-        expect(dynamicObject.orientation.getValue(Iso8601.MINIMUM_VALUE)).toEqual(new Quaternion(0.0, 0.0, 0.0, 1.0));
-    });
-
-    it('processCzmlPacketOrientation returns false if no data.', function() {
-        var packet = {};
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicObject.processCzmlPacketOrientation(dynamicObject, packet)).toEqual(false);
-        expect(dynamicObject.orientation).toBeUndefined();
-    });
-
-    it('processCzmlPacketVertexPositions works.', function() {
-        var packet = {
-            'vertexPositions' : {
-                'cartesian' : [1.0, 2.0, 3.0, 5.0, 6.0, 7.0]
-            }
-        };
-
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicObject.processCzmlPacketVertexPositions(dynamicObject, packet)).toEqual(true);
-        expect(dynamicObject.vertexPositions.getValueCartesian(Iso8601.MINIMUM_VALUE)).toEqual([new Cartesian3(1.0, 2.0, 3.0), new Cartesian3(5.0, 6.0, 7.0)]);
-    });
-
-    it('processCzmlPacketVertexPositions returns false if no data.', function() {
-        var packet = {};
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicObject.processCzmlPacketVertexPositions(dynamicObject, packet)).toEqual(false);
-        expect(dynamicObject.vertexPositions).toBeUndefined();
-    });
-
-    it('processCzmlPacketViewFrom works.', function() {
-        var packet = {
-            'viewFrom' : {
-                'cartesian' : [1.0, 2.0, 3.0]
-            }
-        };
-
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicObject.processCzmlPacketViewFrom(dynamicObject, packet)).toEqual(true);
-        expect(dynamicObject.viewFrom.getValue(Iso8601.MINIMUM_VALUE)).toEqual(new Cartesian3(1.0, 2.0, 3.0));
-    });
-
-    it('processCzmlPacketViewFrom returns false if no data.', function() {
-        var packet = {};
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicObject.processCzmlPacketViewFrom(dynamicObject, packet)).toEqual(false);
-        expect(dynamicObject.viewFrom).toBeUndefined();
-    });
-
-
-    it('processCzmlPacketAvailability works.', function() {
-        var packet = {
-            availability : '2000-01-01/2001-01-01'
-        };
-
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicObject.processCzmlPacketAvailability(dynamicObject, packet)).toEqual(true);
-
-        var interval = TimeInterval.fromIso8601(packet.availability);
-        expect(dynamicObject.availability).toEqual(interval);
-    });
-
-    it('processCzmlPacketAvailability returns false if no data.', function() {
-        var packet = {};
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicObject.processCzmlPacketAvailability(dynamicObject, packet)).toEqual(false);
-        expect(dynamicObject.availability).toBeUndefined();
-    });
-
     it('isAvailable works.', function() {
-        var packet = {
-            availability : '2000-01-01/2001-01-01'
-        };
-
-        var dynamicObject = new DynamicObject('dynamicObject');
-        DynamicObject.processCzmlPacketAvailability(dynamicObject, packet);
-
-        var interval = TimeInterval.fromIso8601(packet.availability);
+        var dynamicObject = new DynamicObject();
+        var interval = TimeInterval.fromIso8601('2000-01-01/2001-01-01');
+        dynamicObject.availability = interval;
         expect(dynamicObject.isAvailable(interval.start.addSeconds(-1))).toEqual(false);
         expect(dynamicObject.isAvailable(interval.start)).toEqual(true);
         expect(dynamicObject.isAvailable(interval.stop)).toEqual(true);
         expect(dynamicObject.isAvailable(interval.stop.addSeconds(1))).toEqual(false);
     });
 
-    it('isAvailable caching works.', function() {
-        var packet = {
-            availability : '2000-01-01/2001-01-01'
-        };
+    it('definitionChanged works for all properties', function() {
+        var dynamicObject = new DynamicObject();
+        var propertyNames = dynamicObject.propertyNames;
+        var propertyNamesLength = propertyNames.length;
 
-        var dynamicObject = new DynamicObject('dynamicObject');
-        DynamicObject.processCzmlPacketAvailability(dynamicObject, packet);
+        var listener = jasmine.createSpy('listener');
+        dynamicObject.definitionChanged.addEventListener(listener);
 
-        var interval = TimeInterval.fromIso8601(packet.availability);
-        expect(dynamicObject.isAvailable(interval.start)).toEqual(true);
-        expect(dynamicObject.isAvailable(interval.start)).toEqual(true);
-        expect(dynamicObject.isAvailable(interval.stop)).toEqual(true);
-        expect(dynamicObject.isAvailable(interval.stop)).toEqual(true);
+        var i;
+        var name;
+        var newValue;
+        var oldValue;
+        //We loop through twice to ensure that oldValue is properly passed in.
+        for ( var x = 0; x < 2; x++) {
+            for (i = 0; i < propertyNamesLength; i++) {
+                name = propertyNames[i];
+                newValue = new ConstantProperty(1);
+                oldValue = dynamicObject[propertyNames[i]];
+                dynamicObject[name] = newValue;
+                expect(listener).toHaveBeenCalledWith(dynamicObject, name, newValue, oldValue);
+            }
+        }
     });
 
-    it('mergeProperties does not change a fully configured billboard', function() {
-        var objectToMerge = new DynamicObject('objectToMerge');
-        objectToMerge.position = 1;
-        objectToMerge.orientation = 2;
-        objectToMerge.vertexPositions = 3;
-        objectToMerge.availability = TimeInterval.fromIso8601('2000-01-01/2001-01-01');
-        objectToMerge.viewFrom = 5;
+    it('merge always overwrites availability', function() {
+        var dynamicObject = new DynamicObject();
+        var interval = TimeInterval.fromIso8601('2000-01-01/2001-01-01');
+        dynamicObject.availability = interval;
 
-        var targetObject = new DynamicObject('targetObject');
-        targetObject.position = 6;
-        targetObject.orientation = 7;
-        targetObject.vertexPositions = 8;
-        targetObject.availability = TimeInterval.fromIso8601('2002-01-01/2003-01-01');
-        targetObject.viewFrom = 10;
+        var dynamicObject2 = new DynamicObject();
+        var interval2 = TimeInterval.fromIso8601('2000-01-01/2001-01-01');
+        dynamicObject2.availability = interval2;
 
-        DynamicObject.mergeProperties(targetObject, objectToMerge);
-
-        expect(targetObject.position).toEqual(6);
-        expect(targetObject.orientation).toEqual(7);
-        expect(targetObject.vertexPositions).toEqual(8);
-        expect(targetObject.availability).toEqual(objectToMerge.availability); //Is currently always overwritten
-        expect(targetObject.viewFrom).toEqual(10);
+        dynamicObject.merge(dynamicObject2);
+        expect(dynamicObject.availability).toBe(interval2);
     });
 
-    it('mergeProperties creates and configures an undefined object', function() {
-        var objectToMerge = new DynamicObject('objectToMerge');
-        objectToMerge.position = 1;
-        objectToMerge.orientation = 2;
-        objectToMerge.vertexPositions = 3;
-        objectToMerge.availability = 4;
-        objectToMerge.viewFrom = 4;
-
-        var targetObject = new DynamicObject('targetObject');
-
-        DynamicObject.mergeProperties(targetObject, objectToMerge);
-
-        expect(targetObject.position).toEqual(objectToMerge.position);
-        expect(targetObject.orientation).toEqual(objectToMerge.orientation);
-        expect(targetObject.vertexPositions).toEqual(objectToMerge.vertexPositions);
-        expect(targetObject.availability).toEqual(objectToMerge.availability);
-        expect(targetObject.viewFrom).toEqual(objectToMerge.viewFrom);
+    it('merge throws with undefined source', function() {
+        var dynamicObject = new DynamicObject();
+        expect(function() {
+            dynamicObject.merge(undefined);
+        }).toThrowDeveloperError();
     });
 
-    it('mergeProperties does not change when used with an undefined object', function() {
-        var objectToMerge = new DynamicObject('targetObject');
-
-        var targetObject = new DynamicObject('objectToMerge');
-        targetObject.position = 1;
-        targetObject.orientation = 2;
-        targetObject.vertexPositions = 3;
-        targetObject.availability = 4;
-        targetObject.viewFrom = 5;
-
-        DynamicObject.mergeProperties(targetObject, objectToMerge);
-
-        expect(targetObject.position).toEqual(1);
-        expect(targetObject.orientation).toEqual(2);
-        expect(targetObject.vertexPositions).toEqual(3);
-        expect(targetObject.availability).toEqual(4);
-        expect(targetObject.viewFrom).toEqual(5);
+    it('can add and remove custom properties.', function() {
+        var dynamicObject = new DynamicObject();
+        expect(dynamicObject.hasOwnProperty('bob')).toBe(false);
+        dynamicObject.addProperty('bob');
+        expect(dynamicObject.hasOwnProperty('bob')).toBe(true);
+        dynamicObject.removeProperty('bob');
+        expect(dynamicObject.hasOwnProperty('bob')).toBe(false);
     });
 
-    it('undefineProperties works', function() {
-        var dynamicObject = new DynamicObject('testObject');
+    it('addProperty throws with no property specified.', function() {
+        var dynamicObject = new DynamicObject();
+        expect(function() {
+            dynamicObject.addProperty(undefined);
+        }).toThrowDeveloperError();
+    });
 
-        dynamicObject.position = 1;
-        dynamicObject.orientation = 2;
-        dynamicObject.vertexPositions = 3;
-        dynamicObject.availability = 4;
-        dynamicObject.viewFrom = 5;
+    it('addProperty throws with no property specified.', function() {
+        var dynamicObject = new DynamicObject();
+        expect(function() {
+            dynamicObject.addProperty(undefined);
+        }).toThrowDeveloperError();
+    });
 
-        DynamicObject.undefineProperties(dynamicObject);
+    it('removeProperty throws with no property specified.', function() {
+        var dynamicObject = new DynamicObject();
+        expect(function() {
+            dynamicObject.removeProperty(undefined);
+        }).toThrowDeveloperError();
+    });
 
-        expect(dynamicObject.position).toBeUndefined();
-        expect(dynamicObject.orientation).toBeUndefined();
-        expect(dynamicObject.vertexPositions).toBeUndefined();
-        expect(dynamicObject.availability).toBeUndefined();
-        expect(dynamicObject.viewFrom).toBeUndefined();
+    it('addProperty throws when adding an existing property.', function() {
+        var dynamicObject = new DynamicObject();
+        dynamicObject.addProperty('bob');
+        expect(function() {
+            dynamicObject.addProperty('bob');
+        }).toThrowDeveloperError();
+    });
+
+    it('removeProperty throws when non-existent property.', function() {
+        var dynamicObject = new DynamicObject();
+        expect(function() {
+            dynamicObject.removeProperty('bob');
+        }).toThrowDeveloperError();
+    });
+
+    it('addProperty throws with defined reserved property name.', function() {
+        var dynamicObject = new DynamicObject();
+        expect(function() {
+            dynamicObject.addProperty('merge');
+        }).toThrowDeveloperError();
+    });
+
+    it('removeProperty throws with defined reserved property name.', function() {
+        var dynamicObject = new DynamicObject();
+        expect(function() {
+            dynamicObject.removeProperty('merge');
+        }).toThrowDeveloperError();
+    });
+
+    it('addProperty throws with undefined reserved property name.', function() {
+        var dynamicObject = new DynamicObject();
+        expect(dynamicObject.name).toBeUndefined();
+        expect(function() {
+            dynamicObject.addProperty('name');
+        }).toThrowDeveloperError();
+    });
+
+    it('removeProperty throws with undefined reserved property name.', function() {
+        var dynamicObject = new DynamicObject();
+        expect(dynamicObject.name).toBeUndefined();
+        expect(function() {
+            dynamicObject.removeProperty('name');
+        }).toThrowDeveloperError();
     });
 });

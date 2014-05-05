@@ -1,236 +1,158 @@
 /*global define*/
-define([
-        '../Core/TimeInterval',
-        '../Core/defaultValue',
-        './CzmlBoolean',
-        './CzmlNumber',
-        './CzmlColor',
-        './DynamicProperty'],
-function(
-        TimeInterval,
+define(['../Core/defaultValue',
+        '../Core/defined',
+        '../Core/defineProperties',
+        '../Core/DeveloperError',
+        '../Core/Event',
+        './createDynamicPropertyDescriptor'
+    ], function(
         defaultValue,
-        CzmlBoolean,
-        CzmlNumber,
-        CzmlColor,
-        DynamicProperty) {
+        defined,
+        defineProperties,
+        DeveloperError,
+        Event,
+        createDynamicPropertyDescriptor) {
     "use strict";
 
     /**
-     * Represents a time-dynamic path, typically used in conjunction with DynamicPathVisualizer and
-     * DynamicObjectCollection to visualize CZML.
-     *
+     * A time-dynamic path representing the visualization of a moving object.
      * @alias DynamicPath
      * @constructor
-     *
-     * @see DynamicObject
-     * @see DynamicProperty
-     * @see DynamicObjectCollection
-     * @see DynamicPathVisualizer
-     * @see VisualizerCollection
-     * @see Polyline
-     * @see CzmlDefaults
      */
     var DynamicPath = function() {
+        this._color = undefined;
+        this._colorSubscription = undefined;
+        this._outlineColor = undefined;
+        this._outlineColorSubscription = undefined;
+        this._outlineWidth = undefined;
+        this._outlineWidthSubscription = undefined;
+        this._show = undefined;
+        this._showSubscription = undefined;
+        this._width = undefined;
+        this._widthSubscription = undefined;
+        this._resolution = undefined;
+        this._resolutionSubscription = undefined;
+        this._leadTime = undefined;
+        this._leadTimeSubscription = undefined;
+        this._trailTime = undefined;
+        this._trailTimeSubscription = undefined;
+
+        this._definitionChanged = new Event();
+    };
+
+    defineProperties(DynamicPath.prototype, {
         /**
-         * A DynamicProperty of type CzmlColor which determines the line's color.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets the event that is raised whenever a new property is assigned.
+         * @memberof DynamicPath.prototype
+         * @type {Event}
          */
-        this.color = undefined;
+        definitionChanged : {
+            get : function() {
+                return this._definitionChanged;
+            }
+        },
+
         /**
-         * A DynamicProperty of type CzmlColor which determines the line's outline color.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the {@link Color} {@link Property} specifying the the path's color.
+         * @memberof DynamicPath.prototype
+         * @type {Property}
          */
-        this.outlineColor = undefined;
+        color : createDynamicPropertyDescriptor('color'),
+
         /**
-         * A DynamicProperty of type CzmlNumber which determines the line's outline width.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the {@link Color} {@link Property} specifying the the path's outline color.
+         * @memberof DynamicPath.prototype
+         * @type {Property}
          */
-        this.outlineWidth = undefined;
+        outlineColor : createDynamicPropertyDescriptor('outlineColor'),
+
         /**
-         * A DynamicProperty of type CzmlBoolean which determines the lines's visibility.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the numeric {@link Property} specifying the the path's outline width.
+         * @memberof DynamicPath.prototype
+         * @type {Property}
          */
-        this.show = undefined;
+        outlineWidth : createDynamicPropertyDescriptor('outlineWidth'),
+
         /**
-         * A DynamicProperty of type CzmlNumber which determines the line's width.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the boolean {@link Property} specifying the path's visibility.
+         * @memberof DynamicPath.prototype
+         * @type {Property}
          */
-        this.width = undefined;
+        show : createDynamicPropertyDescriptor('show'),
+
         /**
-         * A DynamicProperty of type CzmlNumber which determines the maximum step size, in seconds, to take when sampling the position.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the numeric {@link Property} specifying the the path's width.
+         * @memberof DynamicPath.prototype
+         * @type {Property}
          */
-        this.resolution = undefined;
+        width : createDynamicPropertyDescriptor('width'),
+
         /**
-         * A DynamicProperty of type CzmlNumber which determines the number of seconds in front of the object to show.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the numeric {@link Property} specifying the maximum step size, in seconds, to take when sampling the position.
+         * @memberof DynamicPath.prototype
+         * @type {Property}
          */
-        this.leadTime = undefined;
+        resolution : createDynamicPropertyDescriptor('resolution'),
+
         /**
-         * A DynamicProperty of type CzmlNumber which determines the the number of seconds behind the object to show.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the numeric {@link Property} specifying the number of seconds in front of the object to show.
+         * @memberof DynamicPath.prototype
+         * @type {Property}
          */
-        this.trailTime = undefined;
+        leadTime : createDynamicPropertyDescriptor('leadTime'),
+
+        /**
+         * Gets or sets the numeric {@link Property} specifying the number of seconds behind the object to show.
+         * @memberof DynamicPath.prototype
+         * @type {Property}
+         */
+        trailTime : createDynamicPropertyDescriptor('trailTime')
+    });
+
+    /**
+     * Duplicates a DynamicPath instance.
+     * @memberof DynamicPath
+     *
+     * @param {DynamicPath} [result] The object onto which to store the result.
+     * @returns {DynamicPath} The modified result parameter or a new instance if one was not provided.
+     */
+    DynamicPath.prototype.clone = function(result) {
+        if (!defined(result)) {
+            result = new DynamicPath();
+        }
+        result.color = this.color;
+        result.width = this.width;
+        result.resolution = this.resolution;
+        result.outlineColor = this.outlineColor;
+        result.outlineWidth = this.outlineWidth;
+        result.show = this.show;
+        result.leadTime = this.leadTime;
+        result.trailTime = this.trailTime;
+        return result;
     };
 
     /**
-     * Processes a single CZML packet and merges its data into the provided DynamicObject's path.
-     * If the DynamicObject does not have a path, one is created.  This method is not
-     * normally called directly, but is part of the array of CZML processing functions that is
-     * passed into the DynamicObjectCollection constructor.
+     * Assigns each unassigned property on this object to the value
+     * of the same property on the provided source object.
+     * @memberof DynamicPath
      *
-     * @param {DynamicObject} dynamicObject The DynamicObject which will contain the path data.
-     * @param {Object} packet The CZML packet to process.
-     * @returns {Boolean} true if any new properties were created while processing the packet, false otherwise.
-     *
-     * @see DynamicObject
-     * @see DynamicProperty
-     * @see DynamicObjectCollection
-     * @see CzmlDefaults#updaters
+     * @param {DynamicPath} source The object to be merged into this object.
      */
-    DynamicPath.processCzmlPacket = function(dynamicObject, packet) {
-        var pathData = packet.path;
-        if (typeof pathData === 'undefined') {
-            return false;
+    DynamicPath.prototype.merge = function(source) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(source)) {
+            throw new DeveloperError('source is required.');
         }
+        //>>includeEnd('debug');
 
-        var pathUpdated = false;
-        var path = dynamicObject.path;
-        pathUpdated = typeof path === 'undefined';
-        if (pathUpdated) {
-            dynamicObject.path = path = new DynamicPath();
-        }
-
-        var interval = pathData.interval;
-        if (typeof interval !== 'undefined') {
-            interval = TimeInterval.fromIso8601(interval);
-        }
-
-        if (typeof pathData.color !== 'undefined') {
-            var color = path.color;
-            if (typeof color === 'undefined') {
-                path.color = color = new DynamicProperty(CzmlColor);
-                pathUpdated = true;
-            }
-            color.processCzmlIntervals(pathData.color, interval);
-        }
-
-        if (typeof pathData.width !== 'undefined') {
-            var width = path.width;
-            if (typeof width === 'undefined') {
-                path.width = width = new DynamicProperty(CzmlNumber);
-                pathUpdated = true;
-            }
-            width.processCzmlIntervals(pathData.width, interval);
-        }
-
-        if (typeof pathData.resolution !== 'undefined') {
-            var resolution = path.resolution;
-            if (typeof resolution === 'undefined') {
-                path.resolution = resolution = new DynamicProperty(CzmlNumber);
-                pathUpdated = true;
-            }
-            resolution.processCzmlIntervals(pathData.resolution, interval);
-        }
-
-        if (typeof pathData.outlineColor !== 'undefined') {
-            var outlineColor = path.outlineColor;
-            if (typeof outlineColor === 'undefined') {
-                path.outlineColor = outlineColor = new DynamicProperty(CzmlColor);
-                pathUpdated = true;
-            }
-            outlineColor.processCzmlIntervals(pathData.outlineColor, interval);
-        }
-
-        if (typeof pathData.outlineWidth !== 'undefined') {
-            var outlineWidth = path.outlineWidth;
-            if (typeof outlineWidth === 'undefined') {
-                path.outlineWidth = outlineWidth = new DynamicProperty(CzmlNumber);
-                pathUpdated = true;
-            }
-            outlineWidth.processCzmlIntervals(pathData.outlineWidth, interval);
-        }
-
-        if (typeof pathData.show !== 'undefined') {
-            var show = path.show;
-            if (typeof show === 'undefined') {
-                path.show = show = new DynamicProperty(CzmlBoolean);
-                pathUpdated = true;
-            }
-            show.processCzmlIntervals(pathData.show, interval);
-        }
-
-        if (typeof pathData.leadTime !== 'undefined') {
-            var leadTime = path.leadTime;
-            if (typeof leadTime === 'undefined') {
-                path.leadTime = leadTime = new DynamicProperty(CzmlNumber);
-                pathUpdated = true;
-            }
-            leadTime.processCzmlIntervals(pathData.leadTime, interval);
-        }
-
-        if (typeof pathData.trailTime !== 'undefined') {
-            var trailTime = path.trailTime;
-            if (typeof trailTime === 'undefined') {
-                path.trailTime = trailTime = new DynamicProperty(CzmlNumber);
-                pathUpdated = true;
-            }
-            trailTime.processCzmlIntervals(pathData.trailTime, interval);
-        }
-
-        return pathUpdated;
-    };
-
-    /**
-     * Given two DynamicObjects, takes the path properties from the second
-     * and assigns them to the first, assuming such a property did not already exist.
-     * This method is not normally called directly, but is part of the array of CZML processing
-     * functions that is passed into the CompositeDynamicObjectCollection constructor.
-     *
-     * @param {DynamicObject} targetObject The DynamicObject which will have properties merged onto it.
-     * @param {DynamicObject} objectToMerge The DynamicObject containing properties to be merged.
-     *
-     * @see CzmlDefaults
-     */
-    DynamicPath.mergeProperties = function(targetObject, objectToMerge) {
-        var pathToMerge = objectToMerge.path;
-        if (typeof pathToMerge !== 'undefined') {
-
-            var targetpath = targetObject.path;
-            if (typeof targetpath === 'undefined') {
-                targetObject.path = targetpath = new DynamicPath();
-            }
-
-            targetpath.color = defaultValue(targetpath.color, pathToMerge.color);
-            targetpath.width = defaultValue(targetpath.width, pathToMerge.width);
-            targetpath.resolution = defaultValue(targetpath.resolution, pathToMerge.resolution);
-            targetpath.outlineColor = defaultValue(targetpath.outlineColor, pathToMerge.outlineColor);
-            targetpath.outlineWidth = defaultValue(targetpath.outlineWidth, pathToMerge.outlineWidth);
-            targetpath.show = defaultValue(targetpath.show, pathToMerge.show);
-            targetpath.leadTime = defaultValue(targetpath.leadTime, pathToMerge.leadTime);
-            targetpath.trailTime = defaultValue(targetpath.trailTime, pathToMerge.trailTime);
-        }
-    };
-
-    /**
-     * Given a DynamicObject, undefines the path associated with it.
-     * This method is not normally called directly, but is part of the array of CZML processing
-     * functions that is passed into the CompositeDynamicObjectCollection constructor.
-     *
-     * @param {DynamicObject} dynamicObject The DynamicObject to remove the path from.
-     *
-     * @see CzmlDefaults
-     */
-    DynamicPath.undefineProperties = function(dynamicObject) {
-        dynamicObject.path = undefined;
+        this.color = defaultValue(this.color, source.color);
+        this.width = defaultValue(this.width, source.width);
+        this.resolution = defaultValue(this.resolution, source.resolution);
+        this.outlineColor = defaultValue(this.outlineColor, source.outlineColor);
+        this.outlineWidth = defaultValue(this.outlineWidth, source.outlineWidth);
+        this.show = defaultValue(this.show, source.show);
+        this.leadTime = defaultValue(this.leadTime, source.leadTime);
+        this.trailTime = defaultValue(this.trailTime, source.trailTime);
     };
 
     return DynamicPath;

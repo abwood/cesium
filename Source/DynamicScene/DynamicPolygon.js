@@ -1,139 +1,179 @@
 /*global define*/
-define([
-        '../Core/TimeInterval',
-        '../Core/defaultValue',
-        './CzmlBoolean',
-        './DynamicProperty',
-        './DynamicMaterialProperty'
+define(['../Core/defaultValue',
+        '../Core/defined',
+        '../Core/defineProperties',
+        '../Core/DeveloperError',
+        '../Core/Event',
+        './createDynamicPropertyDescriptor'
     ], function(
-         TimeInterval,
-         defaultValue,
-         CzmlBoolean,
-         DynamicProperty,
-         DynamicMaterialProperty) {
+        defaultValue,
+        defined,
+        defineProperties,
+        DeveloperError,
+        Event,
+        createDynamicPropertyDescriptor) {
     "use strict";
 
     /**
-     * Represents a time-dynamic polygon, typically used in conjunction with DynamicPolygonVisualizer and
-     * DynamicObjectCollection to visualize CZML.
+     * An optionally time-dynamic polygon.
      *
      * @alias DynamicPolygon
      * @constructor
-     *
-     * @see DynamicObject
-     * @see DynamicProperty
-     * @see DynamicObjectCollection
-     * @see DynamicPolygonVisualizer
-     * @see VisualizerCollection
-     * @see Polygon
-     * @see CzmlDefaults
      */
     var DynamicPolygon = function() {
+        this._show = undefined;
+        this._showSubscription = undefined;
+        this._material = undefined;
+        this._materialSubscription = undefined;
+        this._height = undefined;
+        this._heightSubscription = undefined;
+        this._extrudedHeight = undefined;
+        this._extrudedHeightSubscription = undefined;
+        this._granularity = undefined;
+        this._granularitySubscription = undefined;
+        this._stRotation = undefined;
+        this._stRotationSubscription = undefined;
+        this._perPositionHeight = undefined;
+        this._perPositionHeightSubscription = undefined;
+        this._definitionChanged = new Event();
+    };
+
+    defineProperties(DynamicPolygon.prototype, {
         /**
-         * A DynamicProperty of type CzmlBoolean which determines the polygon's visibility.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets the event that is raised whenever a new property is assigned.
+         * @memberof DynamicPolygon.prototype
+         * @type {Event}
          */
-        this.show = undefined;
+        definitionChanged : {
+            get : function() {
+                return this._definitionChanged;
+            }
+        },
+
         /**
-         * A DynamicMaterialProperty which determines the polygon's material.
-         * @type {DynamicMaterialProperty}
-         * @default undefined
+         * Gets or sets the boolean {@link Property} specifying the polygon's visibility.
+         * @memberof DynamicPolygon.prototype
+         * @type {Property}
          */
-        this.material = undefined;
+        show : createDynamicPropertyDescriptor('show'),
+
+        /**
+         * Gets or sets the {@link MaterialProperty} specifying the appearance of the polygon.
+         * @memberof DynamicPolygon.prototype
+         * @type {MaterialProperty}
+         */
+        material : createDynamicPropertyDescriptor('material'),
+
+        /**
+         * Gets or sets the Number {@link Property} specifying the height of the polygon.
+         * If undefined, the polygon will be on the surface.
+         * @memberof DynamicPolygon.prototype
+         * @type {Property}
+         */
+        height : createDynamicPropertyDescriptor('height'),
+
+        /**
+         * Gets or sets the Number {@link Property} specifying the extruded height of the polygon.
+         * Setting this property creates a polygon shaped volume starting at height and ending
+         * at the extruded height.
+         * @memberof DynamicPolygon.prototype
+         * @type {Property}
+         */
+        extrudedHeight : createDynamicPropertyDescriptor('extrudedHeight'),
+
+        /**
+         * Gets or sets the Number {@link Property} specifying the sampling distance, in radians,
+         * between each latitude and longitude point.
+         * @memberof DynamicPolygon.prototype
+         * @type {Property}
+         */
+        granularity : createDynamicPropertyDescriptor('granularity'),
+
+        /**
+         * Gets or sets the Number {@link Property} specifying the rotation of the texture coordinates,
+         * in radians. A positive rotation is counter-clockwise.
+         * @memberof DynamicPolygon.prototype
+         * @type {Property}
+         */
+        stRotation : createDynamicPropertyDescriptor('stRotation'),
+
+        /**
+         * Gets or sets the Boolean {@link Property} specifying whether the polygon should be filled.
+         * @memberof DynamicPolygon.prototype
+         * @type {Property}
+         */
+        fill : createDynamicPropertyDescriptor('fill'),
+
+        /**
+         * Gets or sets the Boolean {@link Property} specifying whether the polygon should be outlined.
+         * @memberof DynamicPolygon.prototype
+         * @type {Property}
+         */
+        outline : createDynamicPropertyDescriptor('outline'),
+
+        /**
+         * Gets or sets the Color {@link Property} specifying whether the color of the outline.
+         * @memberof DynamicPolygon.prototype
+         * @type {Property}
+         */
+        outlineColor : createDynamicPropertyDescriptor('outlineColor'),
+
+        /**
+         * Gets or sets the Boolean {@link Property} specifying whether the polygon uses per-position heights.
+         * @memberof DynamicPolygon.prototype
+         * @type {Property}
+         */
+        perPositionHeight : createDynamicPropertyDescriptor('perPositionHeight')
+    });
+
+    /**
+     * Duplicates a DynamicPolygon instance.
+     * @memberof DynamicPolygon
+     *
+     * @param {DynamicPolygon} [result] The object onto which to store the result.
+     * @returns {DynamicPolygon} The modified result parameter or a new instance if one was not provided.
+     */
+    DynamicPolygon.prototype.clone = function(result) {
+        if (!defined(result)) {
+            result = new DynamicPolygon();
+        }
+        result.show = this.show;
+        result.material = this.material;
+        result.height = this.height;
+        result.extrudedHeight = this.extrudedHeight;
+        result.granularity = this.granularity;
+        result.stRotation = this.stRotation;
+        result.fill = this.fill;
+        result.outline = this.outline;
+        result.outlineColor = this.outlineColor;
+        result.perPositionHeight = this.perPositionHeight;
+        return result;
     };
 
     /**
-     * Processes a single CZML packet and merges its data into the provided DynamicObject's polygon.
-     * If the DynamicObject does not have a polygon, one is created.  This method is not
-     * normally called directly, but is part of the array of CZML processing functions that is
-     * passed into the DynamicObjectCollection constructor.
+     * Assigns each unassigned property on this object to the value
+     * of the same property on the provided source object.
+     * @memberof DynamicPolygon
      *
-     * @param {DynamicObject} dynamicObject The DynamicObject which will contain the polygon data.
-     * @param {Object} packet The CZML packet to process.
-     * @param {DynamicObjectCollection} [dynamicObjectCollection] The collection into which objects are being loaded.
-     * @param {String} [sourceUri] The originating url of the CZML being processed.
-     * @returns {Boolean} true if any new properties were created while processing the packet, false otherwise.
-     *
-     * @see DynamicObject
-     * @see DynamicProperty
-     * @see DynamicObjectCollection
-     * @see CzmlDefaults#updaters
+     * @param {DynamicPolygon} source The object to be merged into this object.
      */
-    DynamicPolygon.processCzmlPacket = function(dynamicObject, packet, dynamicObjectCollection, sourceUri) {
-        var polygonData = packet.polygon;
-        if (typeof polygonData === 'undefined') {
-            return false;
+    DynamicPolygon.prototype.merge = function(source) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(source)) {
+            throw new DeveloperError('source is required.');
         }
+        //>>includeEnd('debug');
 
-        var polygonUpdated = false;
-        var polygon = dynamicObject.polygon;
-        polygonUpdated = typeof polygon === 'undefined';
-        if (polygonUpdated) {
-            dynamicObject.polygon = polygon = new DynamicPolygon();
-        }
-
-        var interval = polygonData.interval;
-        if (typeof interval !== 'undefined') {
-            interval = TimeInterval.fromIso8601(interval);
-        }
-
-        if (typeof polygonData.show !== 'undefined') {
-            var show = polygon.show;
-            if (typeof show === 'undefined') {
-                polygon.show = show = new DynamicProperty(CzmlBoolean);
-                polygonUpdated = true;
-            }
-            show.processCzmlIntervals(polygonData.show, interval);
-        }
-
-        if (typeof polygonData.material !== 'undefined') {
-            var material = polygon.material;
-            if (typeof material === 'undefined') {
-                polygon.material = material = new DynamicMaterialProperty();
-                polygonUpdated = true;
-            }
-            material.processCzmlIntervals(polygonData.material, interval, sourceUri);
-        }
-        return polygonUpdated;
-    };
-
-    /**
-     * Given two DynamicObjects, takes the polygon properties from the second
-     * and assigns them to the first, assuming such a property did not already exist.
-     * This method is not normally called directly, but is part of the array of CZML processing
-     * functions that is passed into the CompositeDynamicObjectCollection constructor.
-     *
-     * @param {DynamicObject} targetObject The DynamicObject which will have properties merged onto it.
-     * @param {DynamicObject} objectToMerge The DynamicObject containing properties to be merged.
-     *
-     * @see CzmlDefaults
-     */
-    DynamicPolygon.mergeProperties = function(targetObject, objectToMerge) {
-        var polygonToMerge = objectToMerge.polygon;
-        if (typeof polygonToMerge !== 'undefined') {
-
-            var targetPolygon = targetObject.polygon;
-            if (typeof targetPolygon === 'undefined') {
-                targetObject.polygon = targetPolygon = new DynamicPolygon();
-            }
-
-            targetPolygon.show = defaultValue(targetPolygon.show, polygonToMerge.show);
-            targetPolygon.material = defaultValue(targetPolygon.material, polygonToMerge.material);
-        }
-    };
-
-    /**
-     * Given a DynamicObject, undefines the polygon associated with it.
-     * This method is not normally called directly, but is part of the array of CZML processing
-     * functions that is passed into the CompositeDynamicObjectCollection constructor.
-     *
-     * @param {DynamicObject} dynamicObject The DynamicObject to remove the polygon from.
-     *
-     * @see CzmlDefaults
-     */
-    DynamicPolygon.undefineProperties = function(dynamicObject) {
-        dynamicObject.polygon = undefined;
+        this.show = defaultValue(this.show, source.show);
+        this.material = defaultValue(this.material, source.material);
+        this.height = defaultValue(this.height, source.height);
+        this.extrudedHeight = defaultValue(this.extrudedHeight, source.extrudedHeight);
+        this.granularity = defaultValue(this.granularity, source.granularity);
+        this.stRotation = defaultValue(this.stRotation, source.stRotation);
+        this.fill = defaultValue(this.fill, source.fill);
+        this.outline = defaultValue(this.outline, source.outline);
+        this.outlineColor = defaultValue(this.outlineColor, source.outlineColor);
+        this.perPositionHeight = defaultValue(this.perPositionHeight, source.perPositionHeight);
     };
 
     return DynamicPolygon;

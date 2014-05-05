@@ -1,18 +1,24 @@
 /*global define*/
 define([
-        '../Core/defaultValue',
-        '../Core/DeveloperError'
-       ], function(
-         defaultValue,
-         DeveloperError) {
+        '../Core/defined',
+        '../Core/defineProperties',
+        '../Core/DeveloperError',
+        '../Core/Event',
+        '../DynamicScene/Property'
+    ], function(
+        defined,
+        defineProperties,
+        DeveloperError,
+        Event,
+        Property) {
     "use strict";
 
     function resolve(referenceProperty) {
         var targetProperty = referenceProperty._targetProperty;
-        if (typeof targetProperty === 'undefined') {
-            var resolveBuffer = defaultValue(referenceProperty._dynamicObjectCollection.compositeCollection, referenceProperty._dynamicObjectCollection);
-            var targetObject = resolveBuffer.getObject(referenceProperty._targetObjectId);
-            if (typeof targetObject !== 'undefined') {
+        if (!defined(targetProperty)) {
+            var resolveBuffer = referenceProperty._dynamicObjectCollection;
+            var targetObject = resolveBuffer.getById(referenceProperty._targetObjectId);
+            if (defined(targetObject)) {
                 targetProperty = targetObject[referenceProperty._targetPropertyName];
                 referenceProperty._targetProperty = targetProperty;
                 referenceProperty._targetObject = targetObject;
@@ -22,9 +28,7 @@ define([
     }
 
     /**
-     * A dynamic property which transparently links to another property, which may
-     * or may not exist yet.  It is up to the caller to know which kind of property
-     * is being linked to.
+     * A {@link Property} which transparently links to another property on a provided object.
      *
      * @alias ReferenceProperty
      * @constructor
@@ -32,36 +36,53 @@ define([
      * @param {DynamicObjectCollection} dynamicObjectCollection The object collection which will be used to resolve the reference.
      * @param {String} targetObjectId The id of the object which is being referenced.
      * @param {String} targetPropertyName The name of the property on the target object which we will use.
-     *
-     * @exception {DeveloperError} dynamicObjectCollection is required.
-     * @exception {DeveloperError} targetObjectId is required.
-     * @exception {DeveloperError} targetPropertyName is required.
-     *
-     * @see ReferenceProperty#fromString
-     * @see DynamicProperty
-     * @see DynamicPositionProperty
-     * @see DynamicDirectionsProperty
-     * @see DynamicVertexPositionsProperty
-     * @see DynamicObjectCollection
-     * @see CompositeDynamicObjectCollection
      */
     var ReferenceProperty = function(dynamicObjectCollection, targetObjectId, targetPropertyName) {
-        if (typeof dynamicObjectCollection === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(dynamicObjectCollection)) {
             throw new DeveloperError('dynamicObjectCollection is required.');
         }
-        if (typeof targetObjectId === 'undefined') {
+        if (!defined(targetObjectId)) {
             throw new DeveloperError('targetObjectId is required.');
         }
-        if (typeof targetPropertyName === 'undefined') {
+        if (!defined(targetPropertyName)) {
             throw new DeveloperError('targetPropertyName is required.');
         }
+        //>>includeEnd('debug');
 
         this._targetProperty = undefined;
         this._dynamicObjectCollection = dynamicObjectCollection;
         this._targetObjectId = targetObjectId;
         this._targetObject = undefined;
         this._targetPropertyName = targetPropertyName;
+        this._definitionChanged = new Event();
     };
+
+    defineProperties(ReferenceProperty.prototype, {
+        /**
+         * Gets a value indicating if this property is constant.
+         * This property always returns <code>true</code>.
+         * @memberof ConstantProperty.prototype
+         * @type {Boolean}
+         */
+        isConstant : {
+            get : function() {
+                return Property.isConstant(resolve(this));
+            }
+        },
+        /**
+         * Gets the event that is raised whenever the definition of this property changes.
+         * The definition is changed whenever setValue is called with data different
+         * than the current value.
+         * @memberof ConstantProperty.prototype
+         * @type {Event}
+         */
+        definitionChanged : {
+            get : function() {
+                return this._definitionChanged;
+            }
+        }
+    });
 
     /**
      * Creates a new reference property given the dynamic object collection that will
@@ -71,86 +92,85 @@ define([
      * @param {DynamicObject} dynamicObjectCollection
      * @param referenceString
      *
-     * @exception {DeveloperError} dynamicObjectCollection is required.
-     * @exception {DeveloperError} referenceString is required.
-     * @exception {DeveloperError} referenceString must contain a single . delineating the target object ID and property name.
-     *
-     * @see ReferenceProperty#fromString
-     * @see DynamicProperty
-     * @see DynamicPositionProperty
-     * @see DynamicDirectionsProperty
-     * @see DynamicVertexPositionsProperty
-     * @see DynamicObjectCollection
-     * @see CompositeDynamicObjectCollection
-     *
      * @returns A new instance of ReferenceProperty.
+     *
+     * @exception {DeveloperError} referenceString must contain a single period delineating the target object ID and property name.
      */
     ReferenceProperty.fromString = function(dynamicObjectCollection, referenceString) {
-        if (typeof dynamicObjectCollection === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(dynamicObjectCollection)) {
             throw new DeveloperError('dynamicObjectCollection is required.');
         }
-
-        if (typeof referenceString === 'undefined') {
+        if (!defined(referenceString)) {
             throw new DeveloperError('referenceString is required.');
         }
+        //>>includeEnd('debug');
 
         var parts = referenceString.split('.');
+
+        //>>includeStart('debug', pragmas.debug);
         if (parts.length !== 2) {
             throw new DeveloperError('referenceString must contain a single . delineating the target object ID and property name.');
         }
+        //>>includeEnd('debug');
 
         return new ReferenceProperty(dynamicObjectCollection, parts[0], parts[1]);
     };
 
     /**
-     * Retrieves the value of the property at the specified time.
+     * Gets the value of the property at the provided time.
+     * @memberof ReferenceProperty
      *
-     * @param time The time to evaluate the property.
-     * @param [result] The object to store the result in, if undefined a new instance will be created.
-     * @returns The result parameter or a new instance if the parameter was omitted.
+     * @param {JulianDate} time The time for which to retrieve the value.
+     * @param {Object} [result] The object to store the value into, if omitted, a new instance is created and returned.
+     *
+     * @returns {Object} The modified result parameter or a new instance if the result parameter was not supplied.
      */
     ReferenceProperty.prototype.getValue = function(time, result) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(time)) {
+            throw new DeveloperError('time is required.');
+        }
+        //>>includeEnd('debug');
+
         var targetProperty = resolve(this);
-        return typeof targetProperty !== 'undefined' && this._targetObject.isAvailable(time) ? targetProperty.getValue(time, result) : undefined;
+        return defined(targetProperty) && this._targetObject.isAvailable(time) ? targetProperty.getValue(time, result) : undefined;
     };
 
     /**
-     * Retrieves the Cartographic value or values of the property at the specified time if the linked property
-     * is a DynamicPositionProperty or DynamicVertexPositionsProperty.
+     * Gets the value of the property at the provided time and in the provided reference frame.
+     * This method is only valid if the property being referenced is a {@link PositionProperty}.
+     * @memberof ReferenceProperty
      *
-     * @param time The time to evaluate the property.
-     * @param [result] The object to store the result in, if undefined a new instance will be created.
-     * @returns The result parameter or a new instance if the parameter was omitted.
+     * @param {JulianDate} time The time for which to retrieve the value.
+     * @param {ReferenceFrame} referenceFrame The desired referenceFrame of the result.
+     * @param {Cartesian3} [result] The object to store the value into, if omitted, a new instance is created and returned.
+     * @returns {Cartesian3} The modified result parameter or a new instance if the result parameter was not supplied.
      */
-    ReferenceProperty.prototype.getValueCartographic = function(time, result) {
+    ReferenceProperty.prototype.getValueInReferenceFrame = function(time, referenceFrame, result) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(time)) {
+            throw new DeveloperError('time is required.');
+        }
+        //>>includeEnd('debug');
+
         var targetProperty = resolve(this);
-        return typeof targetProperty !== 'undefined' && this._targetObject.isAvailable(time) ? targetProperty.getValueCartographic(time, result) : undefined;
+        return defined(targetProperty) && this._targetObject.isAvailable(time) ? targetProperty.getValueInReferenceFrame(time, referenceFrame, result) : undefined;
     };
 
     /**
-     * Retrieves the Cartesian value or values of the property at the specified time if the linked property
-     * is a DynamicPositionProperty, DynamicVertexPositionsProperty, or DynamicDirectionsProperty.
+     * Compares this property to the provided property and returns
+     * <code>true</code> if they are equal, <code>false</code> otherwise.
+     * @memberof ReferenceProperty
      *
-     * @param time The time to evaluate the property.
-     * @param [result] The object to store the result in, if undefined a new instance will be created.
-     * @returns The result parameter or a new instance if the parameter was omitted.
+     * @param {Property} [other] The other property.
+     * @returns {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
      */
-    ReferenceProperty.prototype.getValueCartesian = function(time, result) {
-        var targetProperty = resolve(this);
-        return typeof targetProperty !== 'undefined' && this._targetObject.isAvailable(time) ? targetProperty.getValueCartesian(time, result) : undefined;
-    };
-
-    /**
-     * Retrieves the Spherical value or values of the property at the specified time if the linked property
-     * is a DynamicDirectionsProperty.
-     *
-     * @param time The time to evaluate the property.
-     * @param [result] The object to store the result in, if undefined a new instance will be created.
-     * @returns The result parameter or a new instance if the parameter was omitted.
-     */
-    ReferenceProperty.prototype.getValueSpherical = function(time, result) {
-        var targetProperty = resolve(this);
-        return typeof targetProperty !== 'undefined' && this._targetObject.isAvailable(time) ? targetProperty.getValueSpherical(time, result) : undefined;
+    ReferenceProperty.prototype.equals = function(other) {
+        return this === other || //
+               (this._dynamicObjectCollection === other._dynamicObjectCollection && //
+                this._targetObjectId === other._targetObjectId && //
+                this._targetPropertyName === other._targetPropertyName);
     };
 
     return ReferenceProperty;

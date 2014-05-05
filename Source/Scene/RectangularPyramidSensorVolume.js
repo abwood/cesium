@@ -3,6 +3,7 @@ define([
         '../Core/clone',
         '../Core/Color',
         '../Core/defaultValue',
+        '../Core/defined',
         '../Core/destroyObject',
         '../Core/DeveloperError',
         '../Core/Math',
@@ -14,6 +15,7 @@ define([
         clone,
         Color,
         defaultValue,
+        defined,
         destroyObject,
         DeveloperError,
         CesiumMath,
@@ -43,7 +45,7 @@ define([
         this.show = defaultValue(options.show, true);
 
         /**
-         * When <code>true</code>, a polyline is shown where the sensor outline intersections the central body.
+         * When <code>true</code>, a polyline is shown where the sensor outline intersections the globe.
          *
          * @type {Boolean}
          *
@@ -67,7 +69,7 @@ define([
         /**
          * The 4x4 transformation matrix that transforms this sensor from model to world coordinates.  In it's model
          * coordinates, the sensor's principal direction is along the positive z-axis.  Half angles measured from the
-         * principal direction and in the direction of the x-axis and y-axis define the extent of the rectangular
+         * principal direction and in the direction of the x-axis and y-axis define the rectangle of the rectangular
          * cross section.  This matrix is available to GLSL vertex and fragment shaders via
          * {@link czm_model} and derived uniforms.
          * <br /><br />
@@ -84,8 +86,8 @@ define([
          * @example
          * // The sensor's vertex is located on the surface at -75.59777 degrees longitude and 40.03883 degrees latitude.
          * // The sensor's opens upward, along the surface normal.
-         * var center = ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-75.59777, 40.03883));
-         * sensor.modelMatrix = Transforms.eastNorthUpToFixedFrame(center);
+         * var center = ellipsoid.cartographicToCartesian(Cesium.Cartographic.fromDegrees(-75.59777, 40.03883));
+         * sensor.modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(center);
          */
         this.modelMatrix = Matrix4.clone(defaultValue(options.modelMatrix, Matrix4.IDENTITY));
 
@@ -136,21 +138,21 @@ define([
          * </p>
          *
          * @type {Material}
-         * @default Material.fromType(undefined, Material.ColorType)
+         * @default Material.fromType(Material.ColorType)
          *
          * @example
          * // 1. Change the color of the default material to yellow
-         * sensor.material.uniforms.color = new Color(1.0, 1.0, 0.0, 1.0);
+         * sensor.material.uniforms.color = new Cesium.Color(1.0, 1.0, 0.0, 1.0);
          *
          * // 2. Change material to horizontal stripes
-         * sensor.material = Material.fromType(scene.getContext(), Material.StripeType);
+         * sensor.material = Cesium.Material.fromType(Cesium.Material.StripeType);
          *
          * @see <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>
          */
-        this.material = typeof options.material !== 'undefined' ? options.material : Material.fromType(undefined, Material.ColorType);
+        this.material = defined(options.material) ? options.material : Material.fromType(Material.ColorType);
 
         /**
-         * The color of the polyline where the sensor outline intersects the central body.  The default is {@link Color.WHITE}.
+         * The color of the polyline where the sensor outline intersects the globe.  The default is {@link Color.WHITE}.
          *
          * @type {Color}
          * @default {@link Color.WHITE}
@@ -160,7 +162,7 @@ define([
         this.intersectionColor = Color.clone(defaultValue(options.intersectionColor, Color.WHITE));
 
         /**
-         * The approximate pixel width of the polyline where the sensor outline intersects the central body.  The default is 5.0.
+         * The approximate pixel width of the polyline where the sensor outline intersects the globe.  The default is 5.0.
          *
          * @type {Number}
          * @default 5.0
@@ -169,8 +171,19 @@ define([
          */
         this.intersectionWidth = defaultValue(options.intersectionWidth, 5.0);
 
+        /**
+         * User-defined object returned when the sensors is picked.
+         *
+         * @type Object
+         *
+         * @default undefined
+         *
+         * @see Scene#pick
+         */
+        this.id = options.id;
+
         var customSensorOptions = clone(options);
-        customSensorOptions._pickIdThis = defaultValue(options._pickIdThis, this);
+        customSensorOptions._pickPrimitive = defaultValue(options._pickPrimitive, this);
         this._customSensor = new CustomSensorVolume(customSensorOptions);
     };
 
@@ -183,9 +196,11 @@ define([
      * @exception {DeveloperError} this.radius must be greater than or equal to zero.
      */
     RectangularPyramidSensorVolume.prototype.update = function(context, frameState, commandList) {
+        //>>includeStart('debug', pragmas.debug)
         if ((this.xHalfAngle > CesiumMath.PI_OVER_TWO) || (this.yHalfAngle > CesiumMath.PI_OVER_TWO)) {
             throw new DeveloperError('this.xHalfAngle and this.yHalfAngle must each be less than or equal to 90 degrees.');
         }
+        //>>includeEnd('debug');
 
         var s = this._customSensor;
 
@@ -198,6 +213,7 @@ define([
         s.material = this.material;
         s.intersectionColor = this.intersectionColor;
         s.intersectionWidth = this.intersectionWidth;
+        s.id = this.id;
 
         if ((this._xHalfAngle !== this.xHalfAngle) || (this._yHalfAngle !== this.yHalfAngle)) {
 

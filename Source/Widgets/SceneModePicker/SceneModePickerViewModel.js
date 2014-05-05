@@ -1,6 +1,8 @@
 /*global define*/
 define([
         '../../Core/defineProperties',
+        '../../Core/defined',
+        '../../Core/defaultValue',
         '../../Core/destroyObject',
         '../../Core/DeveloperError',
         '../../Core/EventHelper',
@@ -9,6 +11,8 @@ define([
         '../../ThirdParty/knockout'
     ], function(
         defineProperties,
+        defined,
+        defaultValue,
         destroyObject,
         DeveloperError,
         EventHelper,
@@ -22,32 +26,35 @@ define([
      * @alias SceneModePickerViewModel
      * @constructor
      *
-     * @param {SceneTransitioner} transitioner The SceneTransitioner instance to use.
-     *
-     * @exception {DeveloperError} transitioner is required.
+     * @param {Scene} scene The Scene to morph
+     * @param {Number} [duration=2000] The duration of scene morph animations, in milliseconds
      */
-    var SceneModePickerViewModel = function(transitioner) {
-        if (typeof transitioner === 'undefined') {
-            throw new DeveloperError('transitioner is required.');
+    var SceneModePickerViewModel = function(scene, duration) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(scene)) {
+            throw new DeveloperError('scene is required.');
         }
+        //>>includeEnd('debug');
 
-        this._transitioner = transitioner;
+        this._scene = scene;
 
         var that = this;
 
-        var transitionStart = function(transitioner, oldMode, newMode, isMorphing) {
+        var morphStart = function(transitioner, oldMode, newMode, isMorphing) {
             that.sceneMode = newMode;
             that.dropDownVisible = false;
         };
 
         this._eventHelper = new EventHelper();
-        this._eventHelper.add(transitioner.onTransitionStart, transitionStart);
+        this._eventHelper.add(scene.morphStart, morphStart);
+
+        this._duration = defaultValue(duration, 2000);
 
         /**
          * Gets or sets the current SceneMode.  This property is observable.
          * @type {SceneMode}
         */
-        this.sceneMode = transitioner.getScene().mode;
+        this.sceneMode = scene.mode;
 
         /**
          * Gets or sets whether the button drop-down is currently visible.  This property is observable.
@@ -82,7 +89,6 @@ define([
         /**
          * Gets the currently active tooltip.  This property is observable.
          * @type {String}
-         * @default undefined
          */
         this.selectedTooltip = undefined;
         knockout.defineProperty(this, 'selectedTooltip', function() {
@@ -101,15 +107,15 @@ define([
         });
 
         this._morphTo2D = createCommand(function() {
-            transitioner.morphTo2D();
+            scene.morphTo2D(that._duration);
         });
 
         this._morphTo3D = createCommand(function() {
-            transitioner.morphTo3D();
+            scene.morphTo3D(that._duration);
         });
 
         this._morphToColumbusView = createCommand(function() {
-            transitioner.morphToColumbusView();
+            scene.morphToColumbusView(that._duration);
         });
 
         //Used by knockout
@@ -118,14 +124,34 @@ define([
 
     defineProperties(SceneModePickerViewModel.prototype, {
         /**
-         * Gets the scene transitioner.
+         * Gets the scene
          * @memberof SceneModePickerViewModel.prototype
-         *
-         * @type {SceneTransitioner}
+         * @type {Scene}
          */
-        sceneTransitioner : {
+        scene : {
             get : function() {
-                return this._transitioner;
+                return this._scene;
+            }
+        },
+
+        /**
+         * Gets or sets the the duration of scene mode transition animations in milliseconds.
+         * A value of zero causes the scene to instantly change modes.
+         * @memberof SceneModePickerViewModel.prototype
+         * @type {Number}
+         */
+        duration : {
+            get : function() {
+                return this._duration;
+            },
+            set : function(value) {
+                //>>includeStart('debug', pragmas.debug);
+                if (value < 0) {
+                    throw new DeveloperError('duration value must be positive.');
+                }
+                //>>includeEnd('debug');
+
+                this._duration = value;
             }
         },
 

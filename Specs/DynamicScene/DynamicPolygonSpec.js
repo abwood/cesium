@@ -1,126 +1,89 @@
 /*global defineSuite*/
 defineSuite([
-         'DynamicScene/DynamicPolygon',
-         'DynamicScene/DynamicObject',
-         'Core/Color',
-         'Core/Iso8601',
-         'Core/TimeInterval'
-     ], function(
-         DynamicPolygon,
-         DynamicObject,
-         Color,
-         Iso8601,
-         TimeInterval) {
+             'DynamicScene/DynamicPolygon',
+             'DynamicScene/ColorMaterialProperty',
+             'DynamicScene/ConstantProperty',
+             'Core/Color'
+         ], function(
+             DynamicPolygon,
+             ColorMaterialProperty,
+             ConstantProperty,
+             Color) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
-    it('processCzmlPacket adds data for infinite polygon.', function() {
-        var polygonPacket = {
-            polygon : {
-                material : {
-                    solidColor : {
-                        color : {
-                            rgbaf : [0.1, 0.1, 0.1, 0.1]
-                        }
-                    }
-                },
-                show : true
-            }
-        };
+    it('merge assigns unassigned properties', function() {
+        var source = new DynamicPolygon();
+        source.material = new ColorMaterialProperty();
+        source.show = new ConstantProperty(true);
+        source.height = new ConstantProperty(1);
+        source.extrudedHeight = new ConstantProperty(2);
+        source.granularity = new ConstantProperty(3);
+        source.stRotation = new ConstantProperty(4);
 
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicPolygon.processCzmlPacket(dynamicObject, polygonPacket)).toEqual(true);
+        var target = new DynamicPolygon();
+        target.merge(source);
 
-        expect(dynamicObject.polygon).toBeDefined();
-        expect(dynamicObject.polygon.material.getValue(Iso8601.MINIMUM_VALUE).uniforms.color).toEqual(new Color(0.1, 0.1, 0.1, 0.1));
-        expect(dynamicObject.polygon.show.getValue(Iso8601.MINIMUM_VALUE)).toEqual(true);
+        expect(target.material).toBe(source.material);
+        expect(target.show).toBe(source.show);
+        expect(target.height).toBe(source.height);
+        expect(target.extrudedHeight).toBe(source.extrudedHeight);
+        expect(target.granularity).toBe(source.granularity);
+        expect(target.stRotation).toBe(source.stRotation);
     });
 
-    it('processCzmlPacket adds data for constrained polygon.', function() {
-        var polygonPacket = {
-            polygon : {
-                interval : '2000-01-01/2001-01-01',
-                material : {
-                    solidColor : {
-                        color : {
-                            rgbaf : [0.1, 0.1, 0.1, 0.1]
-                        }
-                    }
-                },
-                show : true
-            }
-        };
+    it('merge does not assign assigned properties', function() {
+        var source = new DynamicPolygon();
+        source.material = new ColorMaterialProperty();
+        source.show = new ConstantProperty(true);
 
-        var validTime = TimeInterval.fromIso8601(polygonPacket.polygon.interval).start;
-        var invalidTime = validTime.addSeconds(-1);
+        var material = new ColorMaterialProperty();
+        var show = new ConstantProperty(true);
+        var height = new ConstantProperty(1);
+        var extrudedHeight = new ConstantProperty(2);
+        var granularity = new ConstantProperty(3);
+        var stRotation = new ConstantProperty(4);
 
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicPolygon.processCzmlPacket(dynamicObject, polygonPacket)).toEqual(true);
+        var target = new DynamicPolygon();
+        target.material = material;
+        target.show = show;
+        target.height = height;
+        target.extrudedHeight = extrudedHeight;
+        target.granularity = granularity;
+        target.stRotation = stRotation;
 
-        expect(dynamicObject.polygon).toBeDefined();
-        expect(dynamicObject.polygon.material.getValue(validTime).uniforms.color).toEqual(new Color(0.1, 0.1, 0.1, 0.1));
-        expect(dynamicObject.polygon.show.getValue(validTime)).toEqual(true);
+        target.merge(source);
 
-        expect(dynamicObject.polygon.material.getValue(invalidTime)).toBeUndefined();
-        expect(dynamicObject.polygon.show.getValue(invalidTime)).toBeUndefined();
+        expect(target.material).toBe(material);
+        expect(target.show).toBe(show);
+        expect(target.height).toBe(height);
+        expect(target.extrudedHeight).toBe(extrudedHeight);
+        expect(target.granularity).toBe(granularity);
+        expect(target.stRotation).toBe(stRotation);
     });
 
-    it('processCzmlPacket returns false if no data.', function() {
-        var packet = {};
-        var dynamicObject = new DynamicObject('dynamicObject');
-        expect(DynamicPolygon.processCzmlPacket(dynamicObject, packet)).toEqual(false);
-        expect(dynamicObject.polygon).toBeUndefined();
+    it('clone works', function() {
+        var source = new DynamicPolygon();
+        source.material = new ColorMaterialProperty();
+        source.show = new ConstantProperty(true);
+        source.height = new ConstantProperty(1);
+        source.extrudedHeight = new ConstantProperty(2);
+        source.granularity = new ConstantProperty(3);
+        source.stRotation = new ConstantProperty(4);
+
+        var result = source.clone();
+        expect(result.material).toBe(source.material);
+        expect(result.show).toBe(source.show);
+        expect(result.height).toBe(source.height);
+        expect(result.extrudedHeight).toBe(source.extrudedHeight);
+        expect(result.granularity).toBe(source.granularity);
+        expect(result.stRotation).toBe(source.stRotation);
     });
 
-    it('mergeProperties does not change a fully configured polygon', function() {
-        var objectToMerge = new DynamicObject('objectToMerge');
-        objectToMerge.polygon = new DynamicPolygon();
-        objectToMerge.polygon.material = 1;
-        objectToMerge.polygon.show = 2;
-
-        var targetObject = new DynamicObject('targetObject');
-        targetObject.polygon = new DynamicPolygon();
-        targetObject.polygon.material = 3;
-        targetObject.polygon.show = 4;
-
-        DynamicPolygon.mergeProperties(targetObject, objectToMerge);
-
-        expect(targetObject.polygon.material).toEqual(3);
-        expect(targetObject.polygon.show).toEqual(4);
-    });
-
-    it('mergeProperties creates and configures an undefined polygon', function() {
-        var objectToMerge = new DynamicObject('objectToMerge');
-        objectToMerge.polygon = new DynamicPolygon();
-        objectToMerge.polygon.material = 1;
-        objectToMerge.polygon.show = 2;
-
-        var targetObject = new DynamicObject('targetObject');
-
-        DynamicPolygon.mergeProperties(targetObject, objectToMerge);
-
-        expect(targetObject.polygon.material).toEqual(objectToMerge.polygon.material);
-        expect(targetObject.polygon.show).toEqual(objectToMerge.polygon.show);
-    });
-
-    it('mergeProperties does not change when used with an undefined polygon', function() {
-        var objectToMerge = new DynamicObject('objectToMerge');
-
-        var targetObject = new DynamicObject('targetObject');
-        targetObject.polygon = new DynamicPolygon();
-        targetObject.polygon.material = 3;
-        targetObject.polygon.show = 4;
-
-        DynamicPolygon.mergeProperties(targetObject, objectToMerge);
-
-        expect(targetObject.polygon.material).toEqual(3);
-        expect(targetObject.polygon.show).toEqual(4);
-    });
-
-    it('undefineProperties works', function() {
-        var testObject = new DynamicObject('testObject');
-        testObject.polygon = new DynamicPolygon();
-        DynamicPolygon.undefineProperties(testObject);
-        expect(testObject.polygon).toBeUndefined();
+    it('merge throws if source undefined', function() {
+        var target = new DynamicPolygon();
+        expect(function() {
+            target.merge(undefined);
+        }).toThrowDeveloperError();
     });
 });

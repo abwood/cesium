@@ -4,14 +4,12 @@ defineSuite([
          'Scene/Appearance',
          'Scene/Material',
          'Scene/Primitive',
-         'Core/ExtentGeometry',
-         'Core/Extent',
+         'Core/RectangleGeometry',
+         'Core/Rectangle',
          'Core/GeometryInstance',
          'Core/ColorGeometryInstanceAttribute',
          'Renderer/ClearCommand',
          'Specs/render',
-         'Specs/createCanvas',
-         'Specs/destroyCanvas',
          'Specs/createContext',
          'Specs/destroyContext',
          'Specs/createFrameState'
@@ -20,14 +18,12 @@ defineSuite([
          Appearance,
          Material,
          Primitive,
-         ExtentGeometry,
-         Extent,
+         RectangleGeometry,
+         Rectangle,
          GeometryInstance,
          ColorGeometryInstanceAttribute,
          ClearCommand,
          render,
-         createCanvas,
-         destroyCanvas,
          createContext,
          destroyContext,
          createFrameState) {
@@ -42,22 +38,23 @@ defineSuite([
         context = createContext();
         frameState = createFrameState();
 
-        var extent = Extent.fromDegrees(-80.0, 20.0, -70.0, 40.0);
+        var rectangle = Rectangle.fromDegrees(-10.0, -10.0, 10.0, 10.0);
         primitive = new Primitive({
             geometryInstances : new GeometryInstance({
-                geometry : new ExtentGeometry({
+                geometry : new RectangleGeometry({
                     vertexFormat : PerInstanceColorAppearance.VERTEX_FORMAT,
-                    extent : extent
+                    rectangle : rectangle
                 }),
                 attributes : {
                     color : new ColorGeometryInstanceAttribute(1.0, 1.0, 0.0, 1.0)
                 }
-            })
+            }),
+            asynchronous : false
         });
 
-        frameState.camera.controller.viewExtent(extent);
-        var us = context.getUniformState();
-        us.update(frameState);
+        frameState.camera.viewRectangle(rectangle);
+        var us = context.uniformState;
+        us.update(context, frameState);
     });
 
     afterAll(function() {
@@ -74,7 +71,7 @@ defineSuite([
         expect(a.renderState).toEqual(Appearance.getDefaultRenderState(true, false));
         expect(a.vertexFormat).toEqual(PerInstanceColorAppearance.VERTEX_FORMAT);
         expect(a.flat).toEqual(false);
-        expect(a.faceForward).toEqual(false);
+        expect(a.faceForward).toEqual(true);
         expect(a.translucent).toEqual(true);
         expect(a.closed).toEqual(false);
     });
@@ -103,4 +100,4 @@ defineSuite([
         expect(context.readPixels()).not.toEqual([0, 0, 0, 0]);
     });
 
-});
+}, 'WebGL');

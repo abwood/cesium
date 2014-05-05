@@ -1,10 +1,14 @@
 /*global define*/
 define([
         '../Core/createGuid',
+        '../Core/defined',
+        '../Core/defineProperties',
         '../Core/destroyObject',
         '../Core/DeveloperError'
     ], function(
         createGuid,
+        defined,
+        defineProperties,
         destroyObject,
         DeveloperError) {
     "use strict";
@@ -19,23 +23,21 @@ define([
      *
      * @example
      * // Example 1. Add primitives to a composite.
-     * var primitives = new CompositePrimitive();
-     * primitives.setCentralBody(new CentralBody());
+     * var primitives = new Cesium.CompositePrimitive();
      * primitives.add(billboards);
      * primitives.add(labels);
      *
      * //////////////////////////////////////////////////////////////////
      *
      * // Example 2. Create composites of composites.
-     * var children = new CompositePrimitive();
+     * var children = new Cesium.CompositePrimitive();
      * children.add(billboards);
      *
-     * var parent = new CompositePrimitive();
+     * var parent = new Cesium.CompositePrimitive();
      * parent.add(children);    // Add composite
      * parent.add(labels);      // Add regular primitive
      */
     var CompositePrimitive = function() {
-        this._centralBody = undefined;
         this._primitives = [];
         this._guid = createGuid();
 
@@ -45,13 +47,12 @@ define([
          * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
          *
          * @see CompositePrimitive#destroy
-         * @see CompositePrimitive#setCentralBody
          * @see CompositePrimitive#remove
          * @see CompositePrimitive#removeAll
          *
          * @example
          * // Example 1. Primitives are destroyed by default.
-         * var primitives = new CompositePrimitive();
+         * var primitives = new Cesium.CompositePrimitive();
          * primitives.add(labels);
          * primitives = primitives.destroy();
          * var b = labels.isDestroyed(); // true
@@ -59,7 +60,7 @@ define([
          * //////////////////////////////////////////////////////////////////
          *
          * // Example 2. Do not destroy primitives in a composite.
-         * var primitives = new CompositePrimitive();
+         * var primitives = new Cesium.CompositePrimitive();
          * primitives.destroyPrimitives = false;
          * primitives.add(labels);
          * primitives = primitives.destroy();
@@ -72,51 +73,34 @@ define([
          * Determines if primitives in this composite will be shown.
          *
          * @type Boolean
+         * @default true
          */
         this.show = true;
     };
 
-    /**
-     * DOC_TBA
-     *
-     * @memberof CompositePrimitive
-     * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
-     *
-     * @see CompositePrimitive#setCentralBody
-     */
-    CompositePrimitive.prototype.getCentralBody = function() {
-        return this._centralBody;
-    };
+    defineProperties(CompositePrimitive.prototype, {
+        /**
+         * Gets the length of the list of primitives
+         * @memberof CompositePrimitive.prototype
+         * @type {Number}
+         */
+        length : {
+            get : function() {
+                return this._primitives.length;
+            }
+        }
+    });
 
     /**
-     * DOC_TBA
-     *
-     * Implicitly sets the depth-test ellipsoid.
-     *
-     * @memberof CompositePrimitive
-     *
-     * @see CompositePrimitive#depthTestEllipsoid
-     * @see CompositePrimitive#getCentralBody
-     *
-     * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
-     *
-     * @example
-     * var primitives = new CompositePrimitive();
-     * primitives.setCentralBody(new CentralBody());
-     */
-    CompositePrimitive.prototype.setCentralBody = function(centralBody) {
-        this._centralBody = this.destroyPrimitives && this._centralBody && this._centralBody.destroy();
-        this._centralBody = centralBody;
-    };
-
-    /**
-     * DOC_TBA
+     * Adds a primitive to a composite primitive.  When a composite is rendered
+     * so are all of the primitives in the composite.
      *
      * @memberof CompositePrimitive
      *
-     * @param {Object} primitive DOC_TBA
+     * @param {Object} primitive The primitive to add to the composite.
      *
-     * @exception {DeveloperError} primitive is required.
+     * @returns {Object} The primitive added to the composite.
+     *
      * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
      *
      * @see CompositePrimitive#add
@@ -126,9 +110,11 @@ define([
      * primitives.add(labels);
      */
     CompositePrimitive.prototype.add = function(primitive) {
-        if (typeof primitive === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(primitive)) {
             throw new DeveloperError('primitive is required.');
         }
+        //>>includeEnd('debug');
 
         var external = (primitive._external = primitive._external || {});
         var composites = (external._composites = external._composites || {});
@@ -137,6 +123,8 @@ define([
         };
 
         this._primitives.push(primitive);
+
+        return primitive;
     };
 
     /**
@@ -146,7 +134,7 @@ define([
      *
      * @param {Object} primitive DOC_TBA
      *
-     * @return {Boolean} <code>true</code> if the primitive was removed; <code>false</code> if the primitive was not found in the composite.
+     * @returns {Boolean} <code>true</code> if the primitive was removed; <code>false</code> if the primitive was not found in the composite.
      *
      * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
      *
@@ -207,8 +195,6 @@ define([
      *
      * @memberof CompositePrimitive
      *
-     * Does not include central body.
-     *
      * @param {Object} primitive DOC_TBA
      *
      * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
@@ -223,9 +209,11 @@ define([
     };
 
     function getPrimitiveIndex(compositePrimitive, primitive) {
+        //>>includeStart('debug', pragmas.debug);
         if (!compositePrimitive.contains(primitive)) {
             throw new DeveloperError('primitive is not in this composite.');
         }
+        //>>includeEnd('debug');
 
         return compositePrimitive._primitives.indexOf(primitive);
     }
@@ -244,7 +232,7 @@ define([
      * @see CompositePrimitive#addGround
      */
     CompositePrimitive.prototype.raise = function(primitive) {
-        if (typeof primitive !== 'undefined') {
+        if (defined(primitive)) {
             var index = getPrimitiveIndex(this, primitive);
             var primitives = this._primitives;
 
@@ -270,7 +258,7 @@ define([
      * @see CompositePrimitive#addGround
      */
     CompositePrimitive.prototype.raiseToTop = function(primitive) {
-        if (typeof primitive !== 'undefined') {
+        if (defined(primitive)) {
             var index = getPrimitiveIndex(this, primitive);
             var primitives = this._primitives;
 
@@ -296,7 +284,7 @@ define([
      * @see CompositePrimitive#addGround
      */
     CompositePrimitive.prototype.lower = function(primitive) {
-        if (typeof primitive !== 'undefined') {
+        if (defined(primitive)) {
             var index = getPrimitiveIndex(this, primitive);
             var primitives = this._primitives;
 
@@ -322,7 +310,7 @@ define([
      * @see CompositePrimitive#addGround
      */
     CompositePrimitive.prototype.lowerToBottom = function(primitive) {
-        if (typeof primitive !== 'undefined') {
+        if (defined(primitive)) {
             var index = getPrimitiveIndex(this, primitive);
             var primitives = this._primitives;
 
@@ -341,48 +329,27 @@ define([
      *
      * @memberof CompositePrimitive
      *
-     * @exception {DeveloperError} index is required.
      * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
      *
-     * @see CompositePrimitive#getLength
+     * @see CompositePrimitive#length
      *
      * @example
      * // Toggle the show property of every primitive in the composite -
      * // not recursive on child composites.
-     * var len = primitives.getLength();
+     * var len = primitives.length;
      * for (var i = 0; i < len; ++i) {
      *   var p = primitives.get(i);
      *   p.show = !p.show;
      * }
      */
     CompositePrimitive.prototype.get = function(index) {
-        if (typeof index === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(index)) {
             throw new DeveloperError('index is required.');
         }
+        //>>includeEnd('debug');
 
         return this._primitives[index];
-    };
-
-    /**
-     * DOC_TBA
-     *
-     * @memberof CompositePrimitive
-     *
-     * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
-     *
-     * @see CompositePrimitive#get
-     *
-     * @example
-     * // Toggle the show property of every primitive in the composite -
-     * // not recursive on child composites.
-     * var len = primitives.getLength();
-     * for (var i = 0; i < len; ++i) {
-     *   var p = primitives.get(i);
-     *   p.show = !p.show;
-     * }
-     */
-    CompositePrimitive.prototype.getLength = function() {
-        return this._primitives.length;
     };
 
     /**
@@ -391,10 +358,6 @@ define([
     CompositePrimitive.prototype.update = function(context, frameState, commandList) {
         if (!this.show) {
             return;
-        }
-
-        if (this._centralBody) {
-            this._centralBody.update(context, frameState, commandList);
         }
 
         var primitives = this._primitives;
@@ -412,7 +375,7 @@ define([
      *
      * @memberof CompositePrimitive
      *
-     * @return {Boolean} True if this object was destroyed; otherwise, false.
+     * @returns {Boolean} True if this object was destroyed; otherwise, false.
      *
      * @see CompositePrimitive#destroy
      */
@@ -434,7 +397,7 @@ define([
      *
      * @memberof CompositePrimitive
      *
-     * @return {undefined}
+     * @returns {undefined}
      *
      * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
      *
@@ -445,7 +408,6 @@ define([
      */
     CompositePrimitive.prototype.destroy = function() {
         this.removeAll();
-        this._centralBody = this.destroyPrimitives && this._centralBody && this._centralBody.destroy();
         return destroyObject(this);
     };
 

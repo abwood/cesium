@@ -1,26 +1,28 @@
 /*global defineSuite*/
 defineSuite([
              'DynamicScene/DynamicPointVisualizer',
-             'Specs/createScene',
-             'Specs/destroyScene',
-             'Specs/MockProperty',
+             'DynamicScene/ConstantProperty',
              'DynamicScene/DynamicPoint',
              'DynamicScene/DynamicObjectCollection',
-             'Core/JulianDate',
              'Core/Cartesian3',
              'Core/Color',
-             'Scene/BillboardCollection'
-            ], function(
-              DynamicPointVisualizer,
-              createScene,
-              destroyScene,
-              MockProperty,
-              DynamicPoint,
-              DynamicObjectCollection,
-              JulianDate,
-              Cartesian3,
-              Color,
-              BillboardCollection) {
+             'Core/JulianDate',
+             'Core/NearFarScalar',
+             'Scene/BillboardCollection',
+             'Specs/createScene',
+             'Specs/destroyScene'
+         ], function(
+             DynamicPointVisualizer,
+             ConstantProperty,
+             DynamicPoint,
+             DynamicObjectCollection,
+             Cartesian3,
+             Color,
+             JulianDate,
+             NearFarScalar,
+             BillboardCollection,
+             createScene,
+             destroyScene) {
     "use strict";
     /*global jasmine,describe,xdescribe,it,xit,expect,beforeEach,afterEach,beforeAll,afterAll,spyOn,runs,waits,waitsFor*/
 
@@ -42,16 +44,14 @@ defineSuite([
     it('constructor throws if no scene is passed.', function() {
         expect(function() {
             return new DynamicPointVisualizer();
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
-    it('constructor sets expected parameters and adds collection to scene.', function() {
+    it('constructor adds collection to scene.', function() {
         var dynamicObjectCollection = new DynamicObjectCollection();
         visualizer = new DynamicPointVisualizer(scene, dynamicObjectCollection);
-        expect(visualizer.getScene()).toEqual(scene);
-        expect(visualizer.getDynamicObjectCollection()).toEqual(dynamicObjectCollection);
-        expect(scene.getPrimitives().getLength()).toEqual(1);
-        var billboardCollection = scene.getPrimitives().get(0);
+        expect(scene.primitives.length).toEqual(1);
+        var billboardCollection = scene.primitives.get(0);
         expect(billboardCollection instanceof BillboardCollection).toEqual(true);
     });
 
@@ -60,16 +60,12 @@ defineSuite([
         visualizer = new DynamicPointVisualizer(scene, dynamicObjectCollection);
         expect(function() {
             visualizer.update();
-        }).toThrow();
-    });
-
-    it('update does nothing if no dynamicObjectCollection.', function() {
-        visualizer = new DynamicPointVisualizer(scene);
-        visualizer.update(new JulianDate());
+        }).toThrowDeveloperError();
     });
 
     it('isDestroy returns false until destroyed.', function() {
-        visualizer = new DynamicPointVisualizer(scene);
+        var dynamicObjectCollection = new DynamicObjectCollection();
+        visualizer = new DynamicPointVisualizer(scene, dynamicObjectCollection);
         expect(visualizer.isDestroyed()).toEqual(false);
         visualizer.destroy();
         expect(visualizer.isDestroyed()).toEqual(true);
@@ -81,10 +77,10 @@ defineSuite([
         visualizer = new DynamicPointVisualizer(scene, dynamicObjectCollection);
 
         var testObject = dynamicObjectCollection.getOrCreateObject('test');
-        testObject.position = new MockProperty(new Cartesian3(1234, 5678, 9101112));
+        testObject.position = new ConstantProperty(new Cartesian3(1234, 5678, 9101112));
         visualizer.update(new JulianDate());
-        var billboardCollection = scene.getPrimitives().get(0);
-        expect(billboardCollection.getLength()).toEqual(0);
+        var billboardCollection = scene.primitives.get(0);
+        expect(billboardCollection.length).toEqual(0);
     });
 
     it('object with no position does not create a billboard.', function() {
@@ -93,11 +89,11 @@ defineSuite([
 
         var testObject = dynamicObjectCollection.getOrCreateObject('test');
         var point = testObject.point = new DynamicPoint();
-        point.show = new MockProperty(true);
+        point.show = new ConstantProperty(true);
 
         visualizer.update(new JulianDate());
-        var billboardCollection = scene.getPrimitives().get(0);
-        expect(billboardCollection.getLength()).toEqual(0);
+        var billboardCollection = scene.primitives.get(0);
+        expect(billboardCollection.length).toEqual(0);
     });
 
     it('A DynamicPoint causes a Billboard to be created and updated.', function() {
@@ -106,28 +102,30 @@ defineSuite([
         var dynamicObjectCollection = new DynamicObjectCollection();
         visualizer = new DynamicPointVisualizer(scene, dynamicObjectCollection);
 
-        var billboardCollection = scene.getPrimitives().get(0);
-        expect(billboardCollection.getLength()).toEqual(0);
+        var billboardCollection = scene.primitives.get(0);
+        expect(billboardCollection.length).toEqual(0);
 
         var testObject = dynamicObjectCollection.getOrCreateObject('test');
-        testObject.position = new MockProperty(new Cartesian3(1234, 5678, 9101112));
+        testObject.position = new ConstantProperty(new Cartesian3(1234, 5678, 9101112));
 
         var point = testObject.point = new DynamicPoint();
-        point.show = new MockProperty(true);
-        point.color = new MockProperty(new Color(0.8, 0.7, 0.6, 0.5));
-        point.pixelSize = new MockProperty(12.5);
-        point.outlineColor = new MockProperty(new Color(0.1, 0.2, 0.3, 0.4));
-        point.outlineWidth = new MockProperty(2.5);
+        point.show = new ConstantProperty(true);
+        point.color = new ConstantProperty(new Color(0.8, 0.7, 0.6, 0.5));
+        point.pixelSize = new ConstantProperty(12.5);
+        point.outlineColor = new ConstantProperty(new Color(0.1, 0.2, 0.3, 0.4));
+        point.outlineWidth = new ConstantProperty(2.5);
+        point.scaleByDistance = new ConstantProperty(new NearFarScalar());
 
         visualizer.update(time);
 
-        expect(billboardCollection.getLength()).toEqual(1);
+        expect(billboardCollection.length).toEqual(1);
 
         var bb = billboardCollection.get(0);
 
         visualizer.update(time);
-        expect(bb.getShow()).toEqual(testObject.point.show.getValue(time));
-        expect(bb.getPosition()).toEqual(testObject.position.getValueCartesian(time));
+        expect(bb.show).toEqual(testObject.point.show.getValue(time));
+        expect(bb.position).toEqual(testObject.position.getValue(time));
+        expect(bb.scaleByDistance).toEqual(testObject.point.scaleByDistance.getValue(time));
         expect(bb._visualizerColor).toEqual(testObject.point.color.getValue(time));
         expect(bb._visualizerOutlineColor).toEqual(testObject.point.outlineColor.getValue(time));
         expect(bb._visualizerOutlineWidth).toEqual(testObject.point.outlineWidth.getValue(time));
@@ -143,89 +141,60 @@ defineSuite([
         point.outlineWidth.value = 12.5;
 
         visualizer.update(time);
-        expect(bb.getShow()).toEqual(testObject.point.show.getValue(time));
-        expect(bb.getPosition()).toEqual(testObject.position.getValueCartesian(time));
+        expect(bb.show).toEqual(testObject.point.show.getValue(time));
+        expect(bb.position).toEqual(testObject.position.getValue(time));
+        expect(bb.scaleByDistance).toEqual(testObject.point.scaleByDistance.getValue(time));
         expect(bb._visualizerColor).toEqual(testObject.point.color.getValue(time));
         expect(bb._visualizerOutlineColor).toEqual(testObject.point.outlineColor.getValue(time));
         expect(bb._visualizerOutlineWidth).toEqual(testObject.point.outlineWidth.getValue(time));
         expect(bb._visualizerPixelSize).toEqual(testObject.point.pixelSize.getValue(time));
 
-        point.show = new MockProperty(false);
+        point.show = new ConstantProperty(false);
         visualizer.update(time);
-        expect(bb.getShow()).toEqual(testObject.point.show.getValue(time));
+        expect(bb.show).toEqual(testObject.point.show.getValue(time));
     });
 
     it('clear hides billboards.', function() {
         var dynamicObjectCollection = new DynamicObjectCollection();
         visualizer = new DynamicPointVisualizer(scene, dynamicObjectCollection);
-        var billboardCollection = scene.getPrimitives().get(0);
-        expect(billboardCollection.getLength()).toEqual(0);
+        var billboardCollection = scene.primitives.get(0);
+        expect(billboardCollection.length).toEqual(0);
         var testObject = dynamicObjectCollection.getOrCreateObject('test');
         var time = new JulianDate();
 
-        testObject.position = new MockProperty(new Cartesian3(1234, 5678, 9101112));
+        testObject.position = new ConstantProperty(new Cartesian3(1234, 5678, 9101112));
         var point = testObject.point = new DynamicPoint();
-        point.show = new MockProperty(true);
+        point.show = new ConstantProperty(true);
         visualizer.update(time);
 
-        expect(billboardCollection.getLength()).toEqual(1);
+        expect(billboardCollection.length).toEqual(1);
         var bb = billboardCollection.get(0);
 
         visualizer.update(time);
         //Clearing won't actually remove the billboard because of the
         //internal cache used by the visualizer, instead it just hides it.
-        dynamicObjectCollection.clear();
-        expect(bb.getShow()).toEqual(false);
+        dynamicObjectCollection.removeAll();
+        expect(bb.show).toEqual(false);
     });
 
     it('Visualizer sets dynamicObject property.', function() {
         var dynamicObjectCollection = new DynamicObjectCollection();
         visualizer = new DynamicPointVisualizer(scene, dynamicObjectCollection);
 
-        var billboardCollection = scene.getPrimitives().get(0);
-        expect(billboardCollection.getLength()).toEqual(0);
+        var billboardCollection = scene.primitives.get(0);
+        expect(billboardCollection.length).toEqual(0);
 
         var testObject = dynamicObjectCollection.getOrCreateObject('test');
 
         var time = new JulianDate();
         var point = testObject.point = new DynamicPoint();
 
-        testObject.position = new MockProperty(new Cartesian3(1234, 5678, 9101112));
-        point.show = new MockProperty(true);
+        testObject.position = new ConstantProperty(new Cartesian3(1234, 5678, 9101112));
+        point.show = new ConstantProperty(true);
 
         visualizer.update(time);
-        expect(billboardCollection.getLength()).toEqual(1);
+        expect(billboardCollection.length).toEqual(1);
         var bb = billboardCollection.get(0);
-        expect(bb.dynamicObject).toEqual(testObject);
-    });
-
-    it('setDynamicObjectCollection removes old objects and add new ones.', function() {
-        var dynamicObjectCollection = new DynamicObjectCollection();
-        var testObject = dynamicObjectCollection.getOrCreateObject('test');
-        testObject.position = new MockProperty(new Cartesian3(1234, 5678, 9101112));
-        testObject.point = new DynamicPoint();
-        testObject.point.show = new MockProperty(true);
-
-        var dynamicObjectCollection2 = new DynamicObjectCollection();
-        var testObject2 = dynamicObjectCollection2.getOrCreateObject('test2');
-        testObject2.position = new MockProperty(new Cartesian3(5678, 9101112, 1234));
-        testObject2.point = new DynamicPoint();
-        testObject2.point.show = new MockProperty(true);
-
-        visualizer = new DynamicPointVisualizer(scene, dynamicObjectCollection);
-
-        var time = new JulianDate();
-        var billboardCollection = scene.getPrimitives().get(0);
-
-        visualizer.update(time);
-        expect(billboardCollection.getLength()).toEqual(1);
-        var bb = billboardCollection.get(0);
-        expect(bb.dynamicObject).toEqual(testObject);
-
-        visualizer.setDynamicObjectCollection(dynamicObjectCollection2);
-        visualizer.update(time);
-        expect(billboardCollection.getLength()).toEqual(1);
-        bb = billboardCollection.get(0);
-        expect(bb.dynamicObject).toEqual(testObject2);
+        expect(bb.id).toEqual(testObject);
     });
 }, 'WebGL');

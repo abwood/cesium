@@ -40,7 +40,9 @@ defineSuite([
 
     beforeAll(function() {
         context = createContext({
-            stencil : true
+            webgl : {
+                stencil : true
+            }
         });
     });
 
@@ -59,7 +61,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([0, 0, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -85,7 +87,7 @@ defineSuite([
         var indexBuffer = context.createIndexBuffer(new Uint16Array([0, 0]), BufferUsage.STATIC_DRAW, IndexDatatype.UNSIGNED_SHORT);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([0, 0, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }], indexBuffer);
@@ -115,11 +117,11 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([0, 0, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }, {
-            index : sp.getVertexAttributes().intensity.index,
+            index : sp.vertexAttributes.intensity.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 1
         }]);
@@ -152,13 +154,13 @@ defineSuite([
         var vertexBuffer = context.createVertexBuffer(new Float32Array([0, 0, 0, 1, 1]), BufferUsage.STATIC_DRAW);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : vertexBuffer,
             componentsPerAttribute : 4,
             offsetInBytes : 0,
             strideInBytes : stride
         }, {
-            index : sp.getVertexAttributes().intensity.index,
+            index : sp.vertexAttributes.intensity.index,
             vertexBuffer : vertexBuffer,
             componentsPerAttribute : 1,
             offsetInBytes : 4 * Float32Array.BYTES_PER_ELEMENT,
@@ -176,13 +178,13 @@ defineSuite([
         expect(context.readPixels()).toEqual([255, 0, 0, 255]);
     });
 
-    it('draws with stencil test', function() {
+    it('draws with scissor test', function() {
         var vs = 'attribute vec4 position; void main() { gl_PointSize = 1.0; gl_Position = position; }';
         var fs = 'void main() { gl_FragColor = vec4(1.0); }';
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([0, 0, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -199,7 +201,7 @@ defineSuite([
             renderState : context.createRenderState({
                 scissorTest : {
                     enabled : true,
-                    rectangle : new BoundingRectangle(0, 0, 0, 0)
+                    rectangle : new BoundingRectangle(1, 1, 0, 0)
                 }
             })
         });
@@ -226,7 +228,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([0, 0, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -274,7 +276,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([0, 0, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -315,7 +317,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([0, 0, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -356,7 +358,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([0, 0, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -399,7 +401,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([-1000, -1000, 0, 1, 1000, -1000, 0, 1, 1000, 1000, 0, 1, -1000, 1000, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -443,7 +445,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([-1000, -1000, 0, 1, 1000, -1000, 0, 1, 1000, 1000, 0, 1, -1000, 1000, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -489,7 +491,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([-1000, -1000, 0, 1, 1000, -1000, 0, 1, 1000, 1000, 0, 1, -1000, 1000, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -534,7 +536,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([0, 0, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -562,7 +564,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([-1000, -1000, 0, 1, 1000, 1000, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -575,7 +577,7 @@ defineSuite([
             shaderProgram : sp,
             vertexArray : va,
             renderState : context.createRenderState({
-                lineWidth : context.getMaximumAliasedLineWidth()
+                lineWidth : context.maximumAliasedLineWidth
             // May only be 1.
             })
         });
@@ -592,7 +594,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([0, 0, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -616,7 +618,7 @@ defineSuite([
     });
 
     it('draws with sample coverage', function() {
-        if (!context.getAntialias()) {
+        if (!context.antialias) {
             // Sample coverage requires antialiasing.
             return;
         }
@@ -626,7 +628,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([0, 0, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -667,7 +669,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([-1000, -1000, 0, 1, 1000, -1000, 0, 1, 1000, 1000, 0, 1, -1000, 1000, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -732,7 +734,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([-1000, -1000, 0, 1, 1000, -1000, 0, 1, 1000, 1000, 0, 1, -1000, 1000, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);
@@ -799,7 +801,7 @@ defineSuite([
         sp = context.createShaderProgram(vs, fs);
 
         va = context.createVertexArray([{
-            index : sp.getVertexAttributes().position.index,
+            index : sp.vertexAttributes.position.index,
             vertexBuffer : context.createVertexBuffer(new Float32Array([0, 0, 0, -1, 0, 0, 0, 1]), BufferUsage.STATIC_DRAW),
             componentsPerAttribute : 4
         }]);

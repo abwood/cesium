@@ -1,5 +1,12 @@
 /*global define*/
-define(function() {
+define([
+        '../Core/defaultValue',
+        '../Core/defined',
+        '../Core/formatError'
+    ], function(
+        defaultValue,
+        defined,
+        formatError) {
     "use strict";
 
     /**
@@ -20,7 +27,7 @@ define(function() {
      *   return result;
      * }
      *
-     * return createTaskProcessorWorker(doCalculation);
+     * return Cesium.createTaskProcessorWorker(doCalculation);
      * // the resulting function is compatible with TaskProcessor
      *
      * @see TaskProcessor
@@ -32,22 +39,51 @@ define(function() {
         var transferableObjects = [];
         var responseMessage = {
             id : undefined,
-            result : undefined
+            result : undefined,
+            error : undefined
         };
 
         return function(event) {
             /*global self*/
             var data = event.data;
 
-            responseMessage.id = data.id;
             transferableObjects.length = 0;
-            responseMessage.result = workerFunction(data.parameters, transferableObjects);
+            responseMessage.id = data.id;
+            responseMessage.error = undefined;
+            responseMessage.result = undefined;
 
-            if (typeof postMessage === 'undefined') {
-                postMessage = typeof self.webkitPostMessage !== 'undefined' ? self.webkitPostMessage : self.postMessage;
+            try {
+                responseMessage.result = workerFunction(data.parameters, transferableObjects);
+            } catch (e) {
+                if (e instanceof Error) {
+                    // Errors can't be posted in a message, copy the properties
+                    responseMessage.error = {
+                        name : e.name,
+                        message : e.message,
+                        stack : e.stack
+                    };
+                } else {
+                    responseMessage.error = e;
+                }
             }
 
-            postMessage(responseMessage, transferableObjects);
+            if (!defined(postMessage)) {
+                postMessage = defaultValue(self.webkitPostMessage, self.postMessage);
+            }
+
+            if (!data.canTransferArrayBuffer) {
+                transferableObjects.length = 0;
+            }
+
+            try {
+                postMessage(responseMessage, transferableObjects);
+            } catch (e) {
+                // something went wrong trying to post the message, post a simpler
+                // error that we can be sure will be cloneable
+                responseMessage.result = undefined;
+                responseMessage.error = 'postMessage failed with error: ' + formatError(e) + '\n  with responseMessage: ' + JSON.stringify(responseMessage);
+                postMessage(responseMessage);
+            }
         };
     };
 

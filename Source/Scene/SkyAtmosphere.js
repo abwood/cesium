@@ -1,6 +1,9 @@
 /*global define*/
 define([
         '../Core/defaultValue',
+        '../Core/defined',
+        '../Core/defineProperties',
+        '../Core/Cartesian3',
         '../Core/EllipsoidGeometry',
         '../Core/destroyObject',
         '../Core/GeometryPipeline',
@@ -10,11 +13,15 @@ define([
         '../Renderer/DrawCommand',
         '../Renderer/CullFace',
         '../Renderer/BlendingState',
+        '../Renderer/createShaderSource',
         '../Scene/SceneMode',
         '../Shaders/SkyAtmosphereVS',
         '../Shaders/SkyAtmosphereFS'
     ], function(
         defaultValue,
+        defined,
+        defineProperties,
+        Cartesian3,
         EllipsoidGeometry,
         destroyObject,
         GeometryPipeline,
@@ -24,6 +31,7 @@ define([
         DrawCommand,
         CullFace,
         BlendingState,
+        createShaderSource,
         SceneMode,
         SkyAtmosphereVS,
         SkyAtmosphereFS) {
@@ -43,7 +51,7 @@ define([
      * @param {Ellipsoid} [ellipsoid=Ellipsoid.WGS84] The ellipsoid that the atmosphere is drawn around.
      *
      * @example
-     * scene.skyAtmosphere = new SkyAtmosphere();
+     * scene.skyAtmosphere = new Cesium.SkyAtmosphere();
      *
      * @see Scene.skyAtmosphere
      */
@@ -60,13 +68,14 @@ define([
 
         this._ellipsoid = ellipsoid;
         this._command = new DrawCommand();
+        this._command.owner = this;
         this._spSkyFromSpace = undefined;
         this._spSkyFromAtmosphere = undefined;
 
         this._fCameraHeight = undefined;
         this._fCameraHeight2 = undefined;
-        this._outerRadius = ellipsoid.getRadii().multiplyByScalar(1.025).getMaximumComponent();
-        var innerRadius = ellipsoid.getMaximumRadius();
+        this._outerRadius = Cartesian3.getMaximumComponent(Cartesian3.multiplyByScalar(ellipsoid.radii, 1.025));
+        var innerRadius = ellipsoid.maximumRadius;
         var rayleighScaleDepth = 0.25;
 
         var that = this;
@@ -99,16 +108,18 @@ define([
         };
     };
 
-    /**
-     * Gets the ellipsoid the atmosphere is drawn around.
-     *
-     * @memberof SkyAtmosphere
-     *
-     * @return {Ellipsoid}
-     */
-    SkyAtmosphere.prototype.getEllipsoid = function() {
-        return this._ellipsoid;
-    };
+    defineProperties(SkyAtmosphere.prototype, {
+        /**
+         * Gets the ellipsoid the atmosphere is drawn around.
+         * @memberof SkyAtmosphere.prototype
+         * @type {Ellipsoid}
+         */
+        ellipsoid : {
+            get : function() {
+                return this._ellipsoid;
+            }
+        }
+    });
 
     /**
      * @private
@@ -123,21 +134,22 @@ define([
             return undefined;
         }
 
-        // The atmosphere is only rendered during the color pass; it is not pickable, it doesn't cast shadows, etc.
-        if (!frameState.passes.color) {
+        // The atmosphere is only rendered during the render pass; it is not pickable, it doesn't cast shadows, etc.
+        if (!frameState.passes.render) {
             return undefined;
         }
 
         var command = this._command;
 
-        if (typeof command.vertexArray === 'undefined') {
-            var geometry = new EllipsoidGeometry({
-                radii : this._ellipsoid.getRadii().multiplyByScalar(1.025),
-                numberOfPartitions : 60
-            });
+        if (!defined(command.vertexArray)) {
+            var geometry = EllipsoidGeometry.createGeometry(new EllipsoidGeometry({
+                radii : Cartesian3.multiplyByScalar(this._ellipsoid.radii, 1.025),
+                slicePartitions : 256,
+                stackPartitions : 256
+            }));
             command.vertexArray = context.createVertexArrayFromGeometry({
                 geometry : geometry,
-                attributeIndices : GeometryPipeline.createAttributeIndices(geometry),
+                attributeLocations : GeometryPipeline.createAttributeLocations(geometry),
                 bufferUsage : BufferUsage.STATIC_DRAW
             });
             command.primitiveType = PrimitiveType.TRIANGLES;
@@ -149,26 +161,23 @@ define([
                 blending : BlendingState.ALPHA_BLEND
             });
 
-            var vs;
-            var fs;
-            var shaderCache = context.getShaderCache();
+            var shaderCache = context.shaderCache;
+            var vs = createShaderSource({
+                defines : ['SKY_FROM_SPACE'],
+                sources : [SkyAtmosphereVS]
+            });
+            this._spSkyFromSpace = shaderCache.getShaderProgram(vs, SkyAtmosphereFS);
 
-            vs = '#define SKY_FROM_SPACE\n' +
-                 '#line 0\n' +
-                 SkyAtmosphereVS;
-            fs = '#line 0\n' +
-                 SkyAtmosphereFS;
-            this._spSkyFromSpace = shaderCache.getShaderProgram(vs, fs);
-
-            vs = '#define SKY_FROM_ATMOSPHERE\n' +
-                 '#line 0\n' +
-                 SkyAtmosphereVS;
-            this._spSkyFromAtmosphere = shaderCache.getShaderProgram(vs, fs);
+            vs = createShaderSource({
+                defines : ['SKY_FROM_ATMOSPHERE'],
+                sources : [SkyAtmosphereVS]
+            });
+            this._spSkyFromAtmosphere = shaderCache.getShaderProgram(vs, SkyAtmosphereFS);
         }
 
-        var cameraPosition = frameState.camera.getPositionWC();
+        var cameraPosition = frameState.camera.positionWC;
 
-        this._fCameraHeight2 = cameraPosition.magnitudeSquared();
+        this._fCameraHeight2 = Cartesian3.magnitudeSquared(cameraPosition);
         this._fCameraHeight = Math.sqrt(this._fCameraHeight2);
 
         if (this._fCameraHeight > this._outerRadius) {
@@ -190,7 +199,7 @@ define([
      *
      * @memberof SkyAtmosphere
      *
-     * @return {Boolean} <code>true</code> if this object was destroyed; otherwise, <code>false</code>.
+     * @returns {Boolean} <code>true</code> if this object was destroyed; otherwise, <code>false</code>.
      *
      * @see SkyAtmosphere#destroy
      */
@@ -208,7 +217,7 @@ define([
      *
      * @memberof SkyAtmosphere
      *
-     * @return {undefined}
+     * @returns {undefined}
      *
      * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
      *

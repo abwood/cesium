@@ -1,187 +1,102 @@
 /*global define*/
-define([
-        '../Core/TimeInterval',
-        '../Core/defaultValue',
-        './CzmlBoolean',
-        './CzmlNumber',
-        './CzmlColor',
-        './DynamicProperty'],
-function(
-        TimeInterval,
+define(['../Core/defaultValue',
+        '../Core/defined',
+        '../Core/defineProperties',
+        '../Core/DeveloperError',
+        '../Core/Event',
+        './createDynamicPropertyDescriptor'
+    ], function(
         defaultValue,
-        CzmlBoolean,
-        CzmlNumber,
-        CzmlColor,
-        DynamicProperty) {
+        defined,
+        defineProperties,
+        DeveloperError,
+        Event,
+        createDynamicPropertyDescriptor) {
     "use strict";
 
     /**
-     * Represents a time-dynamic polyline, typically used in conjunction with DynamicPolylineVisualizer and
-     * DynamicObjectCollection to visualize CZML.
-     *
+     * An optionally time-dynamic polyline.
      * @alias DynamicPolyline
      * @constructor
-     *
-     * @see DynamicObject
-     * @see DynamicProperty
-     * @see DynamicObjectCollection
-     * @see DynamicPolylineVisualizer
-     * @see VisualizerCollection
-     * @see Polyline
-     * @see CzmlDefaults
      */
     var DynamicPolyline = function() {
+        this._show = undefined;
+        this._showSubscription = undefined;
+        this._material = undefined;
+        this._materialSubscription = undefined;
+        this._width = undefined;
+        this._widthSubscription = undefined;
+        this._definitionChanged = new Event();
+    };
+
+    defineProperties(DynamicPolyline.prototype, {
         /**
-         * A DynamicProperty of type CzmlColor which determines the line's color.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets the event that is raised whenever a new property is assigned.
+         * @memberof DynamicPolyline.prototype
+         * @type {Event}
          */
-        this.color = undefined;
+        definitionChanged : {
+            get : function() {
+                return this._definitionChanged;
+            }
+        },
+
         /**
-         * A DynamicProperty of type CzmlColor which determines the line's outline color.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the boolean {@link Property} specifying the line's visibility.
+         * @memberof DynamicPolyline.prototype
+         * @type {Property}
          */
-        this.outlineColor = undefined;
+        show : createDynamicPropertyDescriptor('show'),
+
         /**
-         * A DynamicProperty of type CzmlNumber which determines the line's outline width.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the {@link MaterialProperty} specifying the appearance of the polyline.
+         * @memberof DynamicPolyline.prototype
+         * @type {MaterialProperty}
          */
-        this.outlineWidth = undefined;
+        material : createDynamicPropertyDescriptor('material'),
+
         /**
-         * A DynamicProperty of type CzmlBoolean which determines the lines's visibility.
-         * @type {DynamicProperty}
-         * @default undefined
+         * Gets or sets the numeric {@link Property} specifying the the line's width.
+         * @memberof DynamicPolyline.prototype
+         * @type {Property}
          */
-        this.show = undefined;
-        /**
-         * A DynamicProperty of type CzmlNumber which determines the line's width.
-         * @type {DynamicProperty}
-         * @default undefined
-         */
-        this.width = undefined;
+        width : createDynamicPropertyDescriptor('width')
+    });
+
+    /**
+     * Duplicates a DynamicPolyline instance.
+     * @memberof DynamicPolyline
+     *
+     * @param {DynamicPolyline} [result] The object onto which to store the result.
+     * @returns {DynamicPolyline} The modified result parameter or a new instance if one was not provided.
+     */
+    DynamicPolyline.prototype.clone = function(result) {
+        if (!defined(result)) {
+            result = new DynamicPolyline();
+        }
+        result.show = this.show;
+        result.material = this.material;
+        result.width = this.width;
+        return result;
     };
 
     /**
-     * Processes a single CZML packet and merges its data into the provided DynamicObject's polyline.
-     * If the DynamicObject does not have a polyline, one is created.  This method is not
-     * normally called directly, but is part of the array of CZML processing functions that is
-     * passed into the DynamicObjectCollection constructor.
+     * Assigns each unassigned property on this object to the value
+     * of the same property on the provided source object.
+     * @memberof DynamicPolyline
      *
-     * @param {DynamicObject} dynamicObject The DynamicObject which will contain the polyline data.
-     * @param {Object} packet The CZML packet to process.
-     * @returns {Boolean} true if any new properties were created while processing the packet, false otherwise.
-     *
-     * @see DynamicObject
-     * @see DynamicProperty
-     * @see DynamicObjectCollection
-     * @see CzmlDefaults#updaters
+     * @param {DynamicPolyline} source The object to be merged into this object.
      */
-    DynamicPolyline.processCzmlPacket = function(dynamicObject, packet) {
-        var polylineData = packet.polyline;
-        if (typeof polylineData === 'undefined') {
-            return false;
+    DynamicPolyline.prototype.merge = function(source) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(source)) {
+            throw new DeveloperError('source is required.');
         }
+        //>>includeEnd('debug');
 
-        var polylineUpdated = false;
-        var polyline = dynamicObject.polyline;
-        polylineUpdated = typeof polyline === 'undefined';
-        if (polylineUpdated) {
-            dynamicObject.polyline = polyline = new DynamicPolyline();
-        }
-
-        var interval = polylineData.interval;
-        if (typeof interval !== 'undefined') {
-            interval = TimeInterval.fromIso8601(interval);
-        }
-
-        if (typeof polylineData.color !== 'undefined') {
-            var color = polyline.color;
-            if (typeof color === 'undefined') {
-                polyline.color = color = new DynamicProperty(CzmlColor);
-                polylineUpdated = true;
-            }
-            color.processCzmlIntervals(polylineData.color, interval);
-        }
-
-        if (typeof polylineData.width !== 'undefined') {
-            var width = polyline.width;
-            if (typeof width === 'undefined') {
-                polyline.width = width = new DynamicProperty(CzmlNumber);
-                polylineUpdated = true;
-            }
-            width.processCzmlIntervals(polylineData.width, interval);
-        }
-
-        if (typeof polylineData.outlineColor !== 'undefined') {
-            var outlineColor = polyline.outlineColor;
-            if (typeof outlineColor === 'undefined') {
-                polyline.outlineColor = outlineColor = new DynamicProperty(CzmlColor);
-                polylineUpdated = true;
-            }
-            outlineColor.processCzmlIntervals(polylineData.outlineColor, interval);
-        }
-
-        if (typeof polylineData.outlineWidth !== 'undefined') {
-            var outlineWidth = polyline.outlineWidth;
-            if (typeof outlineWidth === 'undefined') {
-                polyline.outlineWidth = outlineWidth = new DynamicProperty(CzmlNumber);
-                polylineUpdated = true;
-            }
-            outlineWidth.processCzmlIntervals(polylineData.outlineWidth, interval);
-        }
-
-        if (typeof polylineData.show !== 'undefined') {
-            var show = polyline.show;
-            if (typeof show === 'undefined') {
-                polyline.show = show = new DynamicProperty(CzmlBoolean);
-                polylineUpdated = true;
-            }
-            show.processCzmlIntervals(polylineData.show, interval);
-        }
-        return polylineUpdated;
-    };
-
-    /**
-     * Given two DynamicObjects, takes the polyline properties from the second
-     * and assigns them to the first, assuming such a property did not already exist.
-     * This method is not normally called directly, but is part of the array of CZML processing
-     * functions that is passed into the CompositeDynamicObjectCollection constructor.
-     *
-     * @param {DynamicObject} targetObject The DynamicObject which will have properties merged onto it.
-     * @param {DynamicObject} objectToMerge The DynamicObject containing properties to be merged.
-     *
-     * @see CzmlDefaults
-     */
-    DynamicPolyline.mergeProperties = function(targetObject, objectToMerge) {
-        var polylineToMerge = objectToMerge.polyline;
-        if (typeof polylineToMerge !== 'undefined') {
-
-            var targetPolyline = targetObject.polyline;
-            if (typeof targetPolyline === 'undefined') {
-                targetObject.polyline = targetPolyline = new DynamicPolyline();
-            }
-
-            targetPolyline.color = defaultValue(targetPolyline.color, polylineToMerge.color);
-            targetPolyline.width = defaultValue(targetPolyline.width, polylineToMerge.width);
-            targetPolyline.outlineColor = defaultValue(targetPolyline.outlineColor, polylineToMerge.outlineColor);
-            targetPolyline.outlineWidth = defaultValue(targetPolyline.outlineWidth, polylineToMerge.outlineWidth);
-            targetPolyline.show = defaultValue(targetPolyline.show, polylineToMerge.show);
-        }
-    };
-
-    /**
-     * Given a DynamicObject, undefines the polyline associated with it.
-     * This method is not normally called directly, but is part of the array of CZML processing
-     * functions that is passed into the CompositeDynamicObjectCollection constructor.
-     *
-     * @param {DynamicObject} dynamicObject The DynamicObject to remove the polyline from.
-     *
-     * @see CzmlDefaults
-     */
-    DynamicPolyline.undefineProperties = function(dynamicObject) {
-        dynamicObject.polyline = undefined;
+        this.show = defaultValue(this.show, source.show);
+        this.material = defaultValue(this.material, source.material);
+        this.width = defaultValue(this.width, source.width);
     };
 
     return DynamicPolyline;

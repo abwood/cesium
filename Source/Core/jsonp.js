@@ -1,10 +1,12 @@
 /*global define*/
 define([
         './defaultValue',
+        './defined',
         './DeveloperError',
         '../ThirdParty/when'
     ], function(
         defaultValue,
+        defined,
         DeveloperError,
         when) {
     "use strict";
@@ -29,16 +31,18 @@ define([
      *
      * @example
      * // load a data asynchronously
-     * jsonp('some/webservice').then(function(data) {
+     * Cesium.jsonp('some/webservice').then(function(data) {
      *     // use the loaded data
-     * }, function() {
+     * }, function(error) {
      *     // an error occurred
      * });
      */
     var jsonp = function(url, options) {
-        if (typeof url === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(url)) {
             throw new DeveloperError('url is required.');
         }
+        //>>includeEnd('debug');
 
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
@@ -48,7 +52,7 @@ define([
         var functionName;
         do {
             functionName = 'jsonp' + Math.random().toString().substring(2, 8);
-        } while (typeof window[functionName] !== 'undefined');
+        } while (defined(window[functionName]));
 
         //assign a function with that name in the global scope
         window[functionName] = function(data) {
@@ -83,7 +87,7 @@ define([
         }
 
         var proxy = options.proxy;
-        if (typeof proxy !== 'undefined') {
+        if (defined(proxy)) {
             url = proxy.getURL(url);
         }
 

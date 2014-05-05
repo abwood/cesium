@@ -1,10 +1,12 @@
 /*global define*/
 define([
         './loadBlob',
-        './loadImage'
+        './loadImage',
+        '../ThirdParty/when'
     ], function(
         loadBlob,
-        loadImage) {
+        loadImage,
+        when) {
     "use strict";
 
     var dataUriRegex = /^data:/;
@@ -32,10 +34,10 @@ define([
      *
      * @example
      * // load a single image asynchronously
-     * loadImageViaBlob('some/image/url.png').then(function(image) {
+     * Cesium.loadImageViaBlob('some/image/url.png').then(function(image) {
      *     var blob = image.blob;
      *     // use the loaded image or XHR
-     * }, function() {
+     * }, function(error) {
      *     // an error occurred
      * });
      *
@@ -56,9 +58,9 @@ define([
                 image.blob = blob;
                 window.URL.revokeObjectURL(blobUrl);
                 return image;
-            }, function(e) {
+            }, function(error) {
                 window.URL.revokeObjectURL(blobUrl);
-                return e;
+                return when.reject(error);
             });
         });
     };
@@ -66,6 +68,7 @@ define([
     var xhrBlobSupported = (function() {
         try {
             var xhr = new XMLHttpRequest();
+            xhr.open('GET', '#', true);
             xhr.responseType = 'blob';
             return xhr.responseType === 'blob';
         } catch (e) {

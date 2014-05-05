@@ -1,8 +1,12 @@
 /*global define*/
 define([
+        '../Core/defined',
+        '../Core/defineProperties',
         '../Core/DeveloperError'
     ], function (
-            DeveloperError) {
+        defined,
+        defineProperties,
+        DeveloperError) {
     "use strict";
 
     /**
@@ -17,16 +21,19 @@ define([
      *
      *  @example
      *  //Create a credit with a tooltip, image and link
-     *  var credit = new Credit('Cesium', '/images/cesium_logo.png', 'http://cesium.agi.com/');
+     *  var credit = new Cesium.Credit('Cesium', '/images/cesium_logo.png', 'http://cesiumjs.org/');
      */
 
     var Credit = function(text, imageUrl, link) {
-        var hasLink = (typeof link !== 'undefined');
-        var hasImage = (typeof imageUrl !== 'undefined');
-        var hasText = (typeof text !== 'undefined');
+        var hasLink = (defined(link));
+        var hasImage = (defined(imageUrl));
+        var hasText = (defined(text));
+
+        //>>includeStart('debug', pragmas.debug);
         if (!hasText && !hasImage && !hasLink) {
             throw new DeveloperError('text, imageUrl or link is required');
         }
+        //>>includeEnd('debug');
 
         if (!hasText && !hasImage) {
             text = link;
@@ -42,6 +49,41 @@ define([
 
         this._hasImage = hasImage;
     };
+
+    defineProperties(Credit.prototype, {
+        /**
+         * The credit text
+         * @memberof Credit.prototype
+         * @type {String}
+         */
+        text : {
+            get : function() {
+                return this._text;
+            }
+        },
+
+        /**
+         * The source location for the image.
+         * @memberof Credit.prototype
+         * @type {String}
+         */
+        imageUrl : {
+            get : function() {
+                return this._imageUrl;
+            }
+        },
+
+        /**
+         * A URL location for the credit hyperlink
+         * @memberof Credit.prototype
+         * @type {String}
+         */
+        link : {
+            get : function() {
+                return this._link;
+            }
+        }
+    });
 
     /**
      * Returns true if the credit has an imageUrl
@@ -62,33 +104,6 @@ define([
     };
 
     /**
-     * Returns the credit text
-     *
-     * @returns {String}
-     */
-    Credit.prototype.getText = function() {
-        return this._text;
-    };
-
-    /**
-     * Returns the source location for the image.
-     *
-     * @returns {String}
-     */
-    Credit.prototype.getImageUrl = function() {
-        return this._imageUrl;
-    };
-
-    /**
-     * Returns a URL location for the credit hyperlink
-     *
-     * @returns {String}
-     */
-    Credit.prototype.getLink = function() {
-        return this._link;
-    };
-
-    /**
      * Returns true if the credits are equal
      *
      * @memberof Credit
@@ -96,11 +111,11 @@ define([
      * @param {Credit} left The first credit
      * @param {Credit} left The second credit
      *
-     * @return {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
+     * @returns {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
      */
     Credit.equals = function(left, right) {
-        var leftUndefined = (typeof left === 'undefined');
-        var rightUndefined = (typeof right === 'undefined');
+        var leftUndefined = (!defined(left));
+        var rightUndefined = (!defined(right));
 
         return ((left === right) ||
                ((leftUndefined && rightUndefined) ||
@@ -117,7 +132,7 @@ define([
      *
      * @param {Credit} credits The credit to compare to.
      *
-     * @return {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
+     * @returns {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
      */
     Credit.prototype.equals = function(credit) {
         return Credit.equals(this, credit);

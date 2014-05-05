@@ -1,29 +1,243 @@
 /*global define*/
 define([
+        '../Core/defined',
         '../Core/DeveloperError',
         '../Core/destroyObject',
         '../Core/Cartesian3',
         '../Core/Matrix3',
         '../Core/Matrix4',
         '../Core/Color',
+        '../Core/TimeInterval',
         '../Core/Transforms',
         '../Core/ReferenceFrame',
+        './ConstantPositionProperty',
+        './SampledPositionProperty',
+        './CompositePositionProperty',
+        './TimeIntervalCollectionPositionProperty',
         '../Scene/Material',
         '../Scene/SceneMode',
         '../Scene/PolylineCollection'
        ], function(
+         defined,
          DeveloperError,
          destroyObject,
          Cartesian3,
          Matrix3,
          Matrix4,
          Color,
+         TimeInterval,
          Transforms,
          ReferenceFrame,
+         ConstantPositionProperty,
+         SampledPositionProperty,
+         CompositePositionProperty,
+         TimeIntervalCollectionPositionProperty,
          Material,
          SceneMode,
          PolylineCollection) {
     "use strict";
+
+    function subSampleSampledProperty(property, start, stop, updateTime, referenceFrame, maximumStep, startingIndex, result) {
+        var times = property._property._times;
+
+        var r = startingIndex;
+        //Always step exactly on start (but only use it if it exists.)
+        var tmp;
+        tmp = property.getValueInReferenceFrame(start, referenceFrame, result[r]);
+        if (defined(tmp)) {
+            result[r++] = tmp;
+        }
+
+        var steppedOnNow = !defined(updateTime) || updateTime.lessThanOrEquals(start) || updateTime.greaterThanOrEquals(stop);
+
+        //Iterate over all interval times and add the ones that fall in our
+        //time range.  Note that times can contain data outside of
+        //the intervals range.  This is by design for use with interpolation.
+        var t = 0;
+        var len = times.length;
+        var current = times[t];
+        var loopStop = stop;
+        var sampling = false;
+        var sampleStepsToTake;
+        var sampleStepsTaken;
+        var sampleStepSize;
+
+        while (t < len) {
+            if (!steppedOnNow && current.greaterThanOrEquals(updateTime)) {
+                tmp = property.getValueInReferenceFrame(updateTime, referenceFrame, result[r]);
+                if (defined(tmp)) {
+                    result[r++] = tmp;
+                }
+                steppedOnNow = true;
+            }
+            if (current.greaterThan(start) && current.lessThan(loopStop) && !current.equals(updateTime)) {
+                tmp = property.getValueInReferenceFrame(current, referenceFrame, result[r]);
+                if (defined(tmp)) {
+                    result[r++] = tmp;
+                }
+            }
+
+            if (t < (len - 1)) {
+                if (maximumStep > 0 && !sampling) {
+                    var next = times[t + 1];
+                    var secondsUntilNext = current.getSecondsDifference(next);
+                    sampling = secondsUntilNext > maximumStep;
+
+                    if (sampling) {
+                        sampleStepsToTake = Math.ceil(secondsUntilNext / maximumStep);
+                        sampleStepsTaken = 0;
+                        sampleStepSize = secondsUntilNext / Math.max(sampleStepsToTake, 2);
+                        sampleStepsToTake = Math.max(sampleStepsToTake - 1, 1);
+                    }
+                }
+
+                if (sampling && sampleStepsTaken < sampleStepsToTake) {
+                    current = current.addSeconds(sampleStepSize);
+                    sampleStepsTaken++;
+                    continue;
+                }
+            }
+            sampling = false;
+            t++;
+            current = times[t];
+        }
+
+        //Always step exactly on stop (but only use it if it exists.)
+        tmp = property.getValueInReferenceFrame(stop, referenceFrame, result[r]);
+        if (defined(tmp)) {
+            result[r++] = tmp;
+        }
+
+        return r;
+    }
+
+    function subSampleGenericProperty(property, start, stop, updateTime, referenceFrame, maximumStep, startingIndex, result) {
+        var tmp;
+        var i = 0;
+        var index = startingIndex;
+        var time = start;
+        var stepSize = Math.max(maximumStep, 60);
+        var steppedOnNow = !defined(updateTime) || updateTime.lessThanOrEquals(start) || updateTime.greaterThanOrEquals(stop);
+        while (time.lessThan(stop)) {
+            if (!steppedOnNow && time.greaterThanOrEquals(updateTime)) {
+                steppedOnNow = true;
+                tmp = property.getValueInReferenceFrame(updateTime, referenceFrame, result[index]);
+                if (defined(tmp)) {
+                    result[index] = tmp;
+                    index++;
+                }
+            }
+            tmp = property.getValueInReferenceFrame(time, referenceFrame, result[index]);
+            if (defined(tmp)) {
+                result[index] = tmp;
+                index++;
+            }
+            i++;
+            time = start.addSeconds(stepSize * i);
+        }
+        //Always sample stop.
+        tmp = property.getValueInReferenceFrame(stop, referenceFrame, result[index]);
+        if (defined(tmp)) {
+            result[index] = tmp;
+            index++;
+        }
+        return index;
+    }
+
+    function subSampleIntervalProperty(property, start, stop, updateTime, referenceFrame, maximumStep, startingIndex, result) {
+        var sampleInterval = new TimeInterval(start, stop, true, true);
+
+        var index = startingIndex;
+        var intervals = property.intervals;
+        for (var i = 0; i < intervals.length; i++) {
+            var interval = intervals.get(i);
+            if (!interval.intersect(sampleInterval).isEmpty) {
+                var time = interval.start;
+                if (!interval.isStartIncluded) {
+                    if (interval.isStopIncluded) {
+                        time = interval.stop;
+                    } else {
+                        time = interval.start.addSeconds(interval.start.getSecondsDifference(interval.stop) / 2);
+                    }
+                }
+                var tmp = property.getValueInReferenceFrame(time, referenceFrame, result[index]);
+                if (defined(tmp)) {
+                    result[index] = tmp;
+                    index++;
+                }
+            }
+        }
+        return index;
+    }
+
+    function subSampleConstantProperty(property, start, stop, updateTime, referenceFrame, maximumStep, startingIndex, result) {
+        var tmp = property.getValueInReferenceFrame(start, referenceFrame, result[startingIndex]);
+        if (defined(tmp)) {
+            result[startingIndex++] = tmp;
+        }
+        return startingIndex;
+    }
+
+    function subSampleCompositeProperty(property, start, stop, updateTime, referenceFrame, maximumStep, startingIndex, result) {
+        var sampleInterval = new TimeInterval(start, stop, true, true);
+
+        var index = startingIndex;
+        var intervals = property.intervals;
+        for (var i = 0; i < intervals.length; i++) {
+            var interval = intervals.get(i);
+            if (!interval.intersect(sampleInterval).isEmpty) {
+                var intervalStart = interval.start;
+                var intervalStop = interval.stop;
+
+                var sampleStart = start;
+                if (intervalStart.greaterThan(sampleStart)) {
+                    sampleStart = intervalStart;
+                }
+
+                var sampleStop = stop;
+                if (intervalStop.lessThan(sampleStop)) {
+                    sampleStop = intervalStop;
+                }
+
+                var intervalProperty = interval.data;
+                if (intervalProperty instanceof SampledPositionProperty) {
+                    index = subSampleSampledProperty(intervalProperty, sampleStart, sampleStop, updateTime, referenceFrame, maximumStep, index, result);
+                } else if (intervalProperty instanceof CompositePositionProperty) {
+                    index = subSampleCompositeProperty(intervalProperty, sampleStart, sampleStop, updateTime, referenceFrame, maximumStep, index, result);
+                } else if (intervalProperty instanceof TimeIntervalCollectionPositionProperty) {
+                    index = subSampleIntervalProperty(intervalProperty, sampleStart, sampleStop, updateTime, referenceFrame, maximumStep, index, result);
+                } else if (intervalProperty instanceof ConstantPositionProperty) {
+                    index = subSampleConstantProperty(intervalProperty, sampleStart, sampleStop, updateTime, referenceFrame, maximumStep, index, result);
+                } else {
+                    //Fallback to generic sampling.
+                    index = subSampleGenericProperty(intervalProperty, sampleStart, sampleStop, updateTime, referenceFrame, maximumStep, index, result);
+                }
+            }
+        }
+        return index;
+    }
+
+    function subSample(property, start, stop, updateTime, referenceFrame, maximumStep, result) {
+        if (!defined(result)) {
+            result = [];
+        }
+
+        var length = 0;
+        if (property instanceof SampledPositionProperty) {
+            length = subSampleSampledProperty(property, start, stop, updateTime, referenceFrame, maximumStep, 0, result);
+        } else if (property instanceof CompositePositionProperty) {
+            length = subSampleCompositeProperty(property, start, stop, updateTime, referenceFrame, maximumStep, 0, result);
+        } else if (property instanceof TimeIntervalCollectionPositionProperty) {
+            length = subSampleIntervalProperty(property, start, stop, updateTime, referenceFrame, maximumStep, 0, result);
+        } else if (property instanceof ConstantPositionProperty) {
+            length = subSampleConstantProperty(property, start, stop, updateTime, referenceFrame, maximumStep, 0, result);
+        } else {
+            //Fallback to generic sampling.
+            length = subSampleGenericProperty(property, start, stop, updateTime, referenceFrame, maximumStep, 0, result);
+        }
+        result.length = length;
+        return result;
+    }
 
     var toFixedScratch = new Matrix3();
     var PolylineUpdater = function(scene, referenceFrame) {
@@ -31,13 +245,13 @@ define([
         this._polylineCollection = new PolylineCollection();
         this._scene = scene;
         this._referenceFrame = referenceFrame;
-        scene.getPrimitives().add(this._polylineCollection);
+        scene.primitives.add(this._polylineCollection);
     };
 
     PolylineUpdater.prototype.update = function(time) {
         if (this._referenceFrame === ReferenceFrame.INERTIAL) {
             var toFixed = Transforms.computeIcrfToFixedMatrix(time, toFixedScratch);
-            if (typeof toFixed === 'undefined') {
+            if (!defined(toFixed)) {
                 toFixed = Transforms.computeTemeToPseudoFixedMatrix(time, toFixedScratch);
             }
             Matrix4.fromRotationTranslation(toFixed, Cartesian3.ZERO, this._polylineCollection.modelMatrix);
@@ -45,13 +259,13 @@ define([
     };
 
     PolylineUpdater.prototype.updateObject = function(time, dynamicObject) {
-        var dynamicPath = dynamicObject.path;
-        if (typeof dynamicPath === 'undefined') {
+        var dynamicPath = dynamicObject._path;
+        if (!defined(dynamicPath)) {
             return;
         }
 
-        var positionProperty = dynamicObject.position;
-        if (typeof positionProperty === 'undefined') {
+        var positionProperty = dynamicObject._position;
+        if (!defined(positionProperty)) {
             return;
         }
 
@@ -59,30 +273,30 @@ define([
         var property;
         var sampleStart;
         var sampleStop;
-        var showProperty = dynamicPath.show;
+        var showProperty = dynamicPath._show;
         var pathVisualizerIndex = dynamicObject._pathVisualizerIndex;
-        var show = typeof showProperty === 'undefined' || showProperty.getValue(time);
+        var show = !defined(showProperty) || showProperty.getValue(time);
 
         //While we want to show the path, there may not actually be anything to show
         //depending on lead/trail settings.  Compute the interval of the path to
         //show and check against actual availability.
         if (show) {
-            property = dynamicPath.leadTime;
+            property = dynamicPath._leadTime;
             var leadTime;
-            if (typeof property !== 'undefined') {
+            if (defined(property)) {
                 leadTime = property.getValue(time);
             }
 
-            property = dynamicPath.trailTime;
+            property = dynamicPath._trailTime;
             var trailTime;
-            if (typeof property !== 'undefined') {
+            if (defined(property)) {
                 trailTime = property.getValue(time);
             }
 
-            var availability = dynamicObject.availability;
-            var hasAvailability = typeof availability !== 'undefined';
-            var hasLeadTime = typeof leadTime !== 'undefined';
-            var hasTrailTime = typeof trailTime !== 'undefined';
+            var availability = dynamicObject._availability;
+            var hasAvailability = defined(availability);
+            var hasLeadTime = defined(leadTime);
+            var hasTrailTime = defined(trailTime);
 
             //Objects need to have either defined availability or both a lead and trail time in order to
             //draw a path (since we can't draw "infinite" paths.
@@ -95,15 +309,21 @@ define([
                 if (hasTrailTime) {
                     sampleStart = time.addSeconds(-trailTime);
                 }
-                if (hasAvailability && (!hasTrailTime || availability.start.greaterThan(sampleStart))) {
-                    sampleStart = availability.start;
-                }
-
                 if (hasLeadTime) {
                     sampleStop = time.addSeconds(leadTime);
                 }
-                if (hasAvailability && (!hasLeadTime || availability.stop.lessThan(sampleStop))) {
-                    sampleStop = availability.stop;
+
+                if (hasAvailability) {
+                    var start = availability.start;
+                    var stop = availability.stop;
+
+                    if (!hasTrailTime || start.greaterThan(sampleStart)) {
+                        sampleStart = start;
+                    }
+
+                    if (!hasLeadTime || stop.lessThan(sampleStop)) {
+                        sampleStop = stop;
+                    }
                 }
                 show = sampleStart.lessThan(sampleStop);
             }
@@ -111,9 +331,9 @@ define([
 
         if (!show) {
             //don't bother creating or updating anything else
-            if (typeof pathVisualizerIndex !== 'undefined') {
+            if (defined(pathVisualizerIndex)) {
                 polyline = this._polylineCollection.get(pathVisualizerIndex);
-                polyline.setShow(false);
+                polyline.show = false;
                 dynamicObject._pathVisualizerIndex = undefined;
                 this._unusedIndexes.push(pathVisualizerIndex);
             }
@@ -121,25 +341,24 @@ define([
         }
 
         var uniforms;
-        if (typeof pathVisualizerIndex === 'undefined') {
+        if (!defined(pathVisualizerIndex)) {
             var unusedIndexes = this._unusedIndexes;
             var length = unusedIndexes.length;
             if (length > 0) {
                 pathVisualizerIndex = unusedIndexes.pop();
                 polyline = this._polylineCollection.get(pathVisualizerIndex);
             } else {
-                pathVisualizerIndex = this._polylineCollection.getLength();
+                pathVisualizerIndex = this._polylineCollection.length;
                 polyline = this._polylineCollection.add();
             }
             dynamicObject._pathVisualizerIndex = pathVisualizerIndex;
-            polyline.dynamicObject = dynamicObject;
+            polyline.id = dynamicObject;
 
-            // CZML_TODO Determine official defaults
-            polyline.setWidth(1);
-            var material = polyline.getMaterial();
-            if (typeof material === 'undefined' || (material.type !== Material.PolylineOutlineType)) {
-                material = Material.fromType(this._scene.getContext(), Material.PolylineOutlineType);
-                polyline.setMaterial(material);
+            polyline.width = 1;
+            var material = polyline.material;
+            if (!defined(material) || (material.type !== Material.PolylineOutlineType)) {
+                material = Material.fromType(Material.PolylineOutlineType);
+                polyline.material = material;
             }
             uniforms = material.uniforms;
             Color.clone(Color.WHITE, uniforms.color);
@@ -147,268 +366,199 @@ define([
             uniforms.outlineWidth = 0;
         } else {
             polyline = this._polylineCollection.get(pathVisualizerIndex);
-            uniforms = polyline.getMaterial().uniforms;
+            uniforms = polyline.material.uniforms;
         }
 
-        polyline.setShow(true);
+        polyline.show = true;
 
-        var resolution = 60.0;
-        property = dynamicPath.resolution;
-        if (typeof property !== 'undefined') {
-            resolution = property.getValue(time);
+        var maxStepSize = 60.0;
+        property = dynamicPath._resolution;
+        if (defined(property)) {
+            var resolution = property.getValue(time);
+            if (defined(resolution)) {
+                maxStepSize = resolution;
+            }
         }
 
-        polyline.setPositions(positionProperty._getValueRangeInReferenceFrame(sampleStart, sampleStop, time, this._referenceFrame, resolution, polyline.getPositions()));
+        polyline.positions = subSample(positionProperty, sampleStart, sampleStop, time, this._referenceFrame, maxStepSize, polyline.positions);
 
-        property = dynamicPath.color;
-        if (typeof property !== 'undefined') {
+        property = dynamicPath._color;
+        if (defined(property)) {
             uniforms.color = property.getValue(time, uniforms.color);
         }
 
-        property = dynamicPath.outlineColor;
-        if (typeof property !== 'undefined') {
+        property = dynamicPath._outlineColor;
+        if (defined(property)) {
             uniforms.outlineColor = property.getValue(time, uniforms.outlineColor);
         }
 
-        property = dynamicPath.outlineWidth;
-        if (typeof property !== 'undefined') {
+        property = dynamicPath._outlineWidth;
+        if (defined(property)) {
             uniforms.outlineWidth = property.getValue(time);
         }
 
-        property = dynamicPath.width;
-        if (typeof property !== 'undefined') {
+        property = dynamicPath._width;
+        if (defined(property)) {
             var width = property.getValue(time);
-            if (typeof width !== 'undefined') {
-                polyline.setWidth(width);
+            if (defined(width)) {
+                polyline.width = width;
             }
         }
     };
 
     PolylineUpdater.prototype.removeObject = function(dynamicObject) {
         var pathVisualizerIndex = dynamicObject._pathVisualizerIndex;
-        if (typeof pathVisualizerIndex !== 'undefined') {
+        if (defined(pathVisualizerIndex)) {
             var polyline = this._polylineCollection.get(pathVisualizerIndex);
-            polyline.setShow(false);
+            polyline.show = false;
             this._unusedIndexes.push(pathVisualizerIndex);
             dynamicObject._pathVisualizerIndex = undefined;
         }
     };
 
     PolylineUpdater.prototype.destroy = function() {
-        this._scene.getPrimitives().remove(this._polylineCollection);
+        this._scene.primitives.remove(this._polylineCollection);
         return destroyObject(this);
     };
 
     /**
-     * A DynamicObject visualizer which maps the DynamicPath instance
-     * in DynamicObject.path to a Polyline primitive.
+     * A {@link Visualizer} which maps {@link DynamicObject#path} to a {@link Polyline}.
      * @alias DynamicPathVisualizer
      * @constructor
      *
      * @param {Scene} scene The scene the primitives will be rendered in.
-     * @param {DynamicObjectCollection} [dynamicObjectCollection] The dynamicObjectCollection to visualize.
-     *
-     * @exception {DeveloperError} scene is required.
-     *
-     * @see DynamicPath
-     * @see Polyline
-     * @see Scene
-     * @see DynamicObject
-     * @see DynamicObjectCollection
-     * @see CompositeDynamicObjectCollection
-     * @see VisualizerCollection
-     * @see DynamicBillboardVisualizer
-     * @see DynamicConeVisualizer
-     * @see DynamicConeVisualizerUsingCustomSensorr
-     * @see DynamicLabelVisualizer
-     * @see DynamicPointVisualizer
-     * @see DynamicPolygonVisualizer
-     * @see DynamicPyramidVisualizer
-     *
+     * @param {DynamicObjectCollection} dynamicObjectCollection The dynamicObjectCollection to visualize.
      */
     var DynamicPathVisualizer = function(scene, dynamicObjectCollection) {
-        if (typeof scene === 'undefined') {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(scene)) {
             throw new DeveloperError('scene is required.');
         }
+        if (!defined(dynamicObjectCollection)) {
+            throw new DeveloperError('dynamicObjectCollection is required.');
+        }
+        //>>includeEnd('debug');
+
+        dynamicObjectCollection.collectionChanged.addEventListener(DynamicPathVisualizer.prototype._onObjectsRemoved, this);
+
         this._scene = scene;
         this._updaters = {};
-        this._dynamicObjectCollection = undefined;
-        this.setDynamicObjectCollection(dynamicObjectCollection);
-    };
-
-    /**
-     * Returns the scene being used by this visualizer.
-     *
-     * @returns {Scene} The scene being used by this visualizer.
-     */
-    DynamicPathVisualizer.prototype.getScene = function() {
-        return this._scene;
-    };
-
-    /**
-     * Gets the DynamicObjectCollection being visualized.
-     *
-     * @returns {DynamicObjectCollection} The DynamicObjectCollection being visualized.
-     */
-    DynamicPathVisualizer.prototype.getDynamicObjectCollection = function() {
-        return this._dynamicObjectCollection;
-    };
-
-    /**
-     * Sets the DynamicObjectCollection to visualize.
-     *
-     * @param dynamicObjectCollection The DynamicObjectCollection to visualizer.
-     */
-    DynamicPathVisualizer.prototype.setDynamicObjectCollection = function(dynamicObjectCollection) {
-        var oldCollection = this._dynamicObjectCollection;
-        if (oldCollection !== dynamicObjectCollection) {
-            if (typeof oldCollection !== 'undefined') {
-                oldCollection.objectsRemoved.removeEventListener(DynamicPathVisualizer.prototype._onObjectsRemoved, this);
-                this.removeAllPrimitives();
-            }
-            this._dynamicObjectCollection = dynamicObjectCollection;
-            if (typeof dynamicObjectCollection !== 'undefined') {
-                dynamicObjectCollection.objectsRemoved.addEventListener(DynamicPathVisualizer.prototype._onObjectsRemoved, this);
-            }
-        }
+        this._dynamicObjectCollection = dynamicObjectCollection;
     };
 
     /**
      * Updates all of the primitives created by this visualizer to match their
      * DynamicObject counterpart at the given time.
+     * @memberof DynamicPathVisualizer
      *
      * @param {JulianDate} time The time to update to.
-     *
-     * @exception {DeveloperError} time is required.
+     * @returns {Boolean} This function always returns true.
      */
     DynamicPathVisualizer.prototype.update = function(time) {
-        if (typeof time === 'undefined') {
-            throw new DeveloperError('time is requied.');
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(time)) {
+            throw new DeveloperError('time is required.');
         }
+        //>>includeEnd('debug');
 
-        if (typeof this._dynamicObjectCollection !== 'undefined') {
-            var updaters = this._updaters;
-            for ( var key in updaters) {
-                if (updaters.hasOwnProperty(key)) {
-                    updaters[key].update(time);
-                }
-            }
-
-            var dynamicObjects = this._dynamicObjectCollection.getObjects();
-            for ( var i = 0, len = dynamicObjects.length; i < len; i++) {
-                var dynamicObject = dynamicObjects[i];
-
-                if (typeof dynamicObject.path === 'undefined') {
-                    continue;
-                }
-
-                var positionProperty = dynamicObject.position;
-                if (typeof positionProperty === 'undefined') {
-                    continue;
-                }
-
-                var lastUpdater = dynamicObject._pathUpdater;
-
-                var frameToVisualize = ReferenceFrame.FIXED;
-                if (this._scene.mode === SceneMode.SCENE3D) {
-                    frameToVisualize = positionProperty._getReferenceFrame();
-                }
-
-                var currentUpdater = this._updaters[frameToVisualize];
-
-                if ((lastUpdater === currentUpdater) && (typeof currentUpdater !== 'undefined')) {
-                    currentUpdater.updateObject(time, dynamicObject);
-                    continue;
-                }
-
-                if (typeof lastUpdater !== 'undefined') {
-                    lastUpdater.removeObject(dynamicObject);
-                }
-
-                if (typeof currentUpdater === 'undefined') {
-                    currentUpdater = new PolylineUpdater(this._scene, frameToVisualize);
-                    currentUpdater.update(time);
-                    this._updaters[frameToVisualize] = currentUpdater;
-                }
-
-                dynamicObject._pathUpdater = currentUpdater;
-                if (typeof currentUpdater !== 'undefined') {
-                    currentUpdater.updateObject(time, dynamicObject);
-                }
-            }
-        }
-    };
-
-    /**
-     * Removes all primitives from the scene.
-     */
-    DynamicPathVisualizer.prototype.removeAllPrimitives = function() {
         var updaters = this._updaters;
         for ( var key in updaters) {
             if (updaters.hasOwnProperty(key)) {
-                updaters[key].destroy();
+                updaters[key].update(time);
             }
         }
-        this._updaters = {};
 
-        if (typeof this._dynamicObjectCollection !== 'undefined') {
-            var dynamicObjects = this._dynamicObjectCollection.getObjects();
-            for ( var i = dynamicObjects.length - 1; i > -1; i--) {
-                dynamicObjects[i]._pathUpdater = undefined;
-                dynamicObjects[i]._pathVisualizerIndex = undefined;
+        var dynamicObjects = this._dynamicObjectCollection.getObjects();
+        for (var i = 0, len = dynamicObjects.length; i < len; i++) {
+            var dynamicObject = dynamicObjects[i];
+
+            if (!defined(dynamicObject._path)) {
+                continue;
+            }
+
+            var positionProperty = dynamicObject._position;
+            if (!defined(positionProperty)) {
+                continue;
+            }
+
+            var lastUpdater = dynamicObject._pathUpdater;
+
+            var frameToVisualize = ReferenceFrame.FIXED;
+            if (this._scene.mode === SceneMode.SCENE3D) {
+                frameToVisualize = positionProperty._referenceFrame;
+            }
+
+            var currentUpdater = this._updaters[frameToVisualize];
+
+            if ((lastUpdater === currentUpdater) && (defined(currentUpdater))) {
+                currentUpdater.updateObject(time, dynamicObject);
+                continue;
+            }
+
+            if (defined(lastUpdater)) {
+                lastUpdater.removeObject(dynamicObject);
+            }
+
+            if (!defined(currentUpdater)) {
+                currentUpdater = new PolylineUpdater(this._scene, frameToVisualize);
+                currentUpdater.update(time);
+                this._updaters[frameToVisualize] = currentUpdater;
+            }
+
+            dynamicObject._pathUpdater = currentUpdater;
+            if (defined(currentUpdater)) {
+                currentUpdater.updateObject(time, dynamicObject);
             }
         }
+        return true;
     };
 
     /**
      * Returns true if this object was destroyed; otherwise, false.
-     * <br /><br />
-     * If this object was destroyed, it should not be used; calling any function other than
-     * <code>isDestroyed</code> will result in a {@link DeveloperError} exception.
-     *
      * @memberof DynamicPathVisualizer
      *
-     * @return {Boolean} True if this object was destroyed; otherwise, false.
-     *
-     * @see DynamicPathVisualizer#destroy
+     * @returns {Boolean} True if this object was destroyed; otherwise, false.
      */
     DynamicPathVisualizer.prototype.isDestroyed = function() {
         return false;
     };
 
     /**
-     * Destroys the WebGL resources held by this object.  Destroying an object allows for deterministic
-     * release of WebGL resources, instead of relying on the garbage collector to destroy this object.
-     * <br /><br />
-     * Once an object is destroyed, it should not be used; calling any function other than
-     * <code>isDestroyed</code> will result in a {@link DeveloperError} exception.  Therefore,
-     * assign the return value (<code>undefined</code>) to the object as done in the example.
-     *
+     * Removes and destroys all primitives created by this instance.
      * @memberof DynamicPathVisualizer
-     *
-     * @return {undefined}
-     *
-     * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
-     *
-     * @see DynamicPathVisualizer#isDestroyed
-     *
-     * @example
-     * visualizer = visualizer && visualizer.destroy();
      */
     DynamicPathVisualizer.prototype.destroy = function() {
-        this.removeAllPrimitives();
+        var dynamicObjectCollection = this._dynamicObjectCollection;
+        dynamicObjectCollection.collectionChanged.removeEventListener(DynamicPathVisualizer.prototype._onObjectsRemoved, this);
+
+        var updaters = this._updaters;
+        for ( var key in updaters) {
+            if (updaters.hasOwnProperty(key)) {
+                updaters[key].destroy();
+            }
+        }
+
+        var dynamicObjects = dynamicObjectCollection.getObjects();
+        var length = dynamicObjects.length;
+        for (var i = 0; i < length; i++) {
+            dynamicObjects[i]._pathUpdater = undefined;
+            dynamicObjects[i]._pathVisualizerIndex = undefined;
+        }
         return destroyObject(this);
     };
 
-    DynamicPathVisualizer.prototype._onObjectsRemoved = function(dynamicObjectCollection, dynamicObjects) {
-        for ( var i = dynamicObjects.length - 1; i > -1; i--) {
+    DynamicPathVisualizer.prototype._onObjectsRemoved = function(dynamicObjectCollection, added, dynamicObjects) {
+        for (var i = dynamicObjects.length - 1; i > -1; i--) {
             var dynamicObject = dynamicObjects[i];
             var _pathUpdater = dynamicObject._pathUpdater;
-            if (typeof _pathUpdater !== 'undefined') {
+            if (defined(_pathUpdater)) {
                 _pathUpdater.removeObject(dynamicObject);
             }
         }
     };
+
+    //for testing
+    DynamicPathVisualizer._subSample = subSample;
 
     return DynamicPathVisualizer;
 });

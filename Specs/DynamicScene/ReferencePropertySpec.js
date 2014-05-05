@@ -22,7 +22,7 @@ defineSuite([
     var testObjectLink = 'testObject.property';
     function createTestObject(dynamicObjectCollection, methodName) {
         var testObject = dynamicObjectCollection.getOrCreateObject('testObject');
-        testObject._setAvailability(TimeInterval.fromIso8601('2012/2013'));
+        testObject.availability = TimeInterval.fromIso8601('2012/2013');
         testObject.property = {};
         testObject.property[methodName] = function(time, result) {
             result.expectedTime = time;
@@ -35,60 +35,52 @@ defineSuite([
     it('constructor throws if missing dynamicObjectCollection parameter', function() {
         expect(function() {
             return new ReferenceProperty(undefined, 'object', 'property');
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('constructor throws if missing targetObjectId parameter', function() {
         expect(function() {
             return new ReferenceProperty(new DynamicObjectCollection(), undefined, 'property');
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('constructor throws if missing targetPropertyName parameter', function() {
         expect(function() {
             return new ReferenceProperty(new DynamicObjectCollection(), 'object', undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('fromString throws if missing dynamicObjectCollection parameter', function() {
         expect(function() {
             return ReferenceProperty.fromString(undefined, 'object.property');
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('fromString throws if missing string parameter', function() {
         expect(function() {
             return ReferenceProperty.fromString(new DynamicObjectCollection(), undefined);
-        }).toThrow();
+        }).toThrowDeveloperError();
     });
 
     it('fromString throws if invalid string parameter', function() {
         expect(function() {
             return ReferenceProperty.fromString(new DynamicObjectCollection(), 'a.b.c');
-        }).toThrow();
+        }).toThrowDeveloperError();
+    });
+
+    it('getValue throws with undefined time', function() {
+        var property = ReferenceProperty.fromString(new DynamicObjectCollection(), 'object.property');
+        expect(function() {
+            property.getValue(undefined);
+        }).toThrowDeveloperError();
     });
 
     it('getValue returned undefined for unresolved property', function() {
         var property = ReferenceProperty.fromString(new DynamicObjectCollection(), 'object.property');
-        expect(property.getValue()).toBeUndefined();
+        expect(property.getValue(new JulianDate())).toBeUndefined();
     });
 
-    it('getValueCartographic returned undefined for unresolved property', function() {
-        var property = ReferenceProperty.fromString(new DynamicObjectCollection(), 'object.property');
-        expect(property.getValueCartographic()).toBeUndefined();
-    });
-
-    it('getValueCartesian returned undefined for unresolved property', function() {
-        var property = ReferenceProperty.fromString(new DynamicObjectCollection(), 'object.property');
-        expect(property.getValueCartesian()).toBeUndefined();
-    });
-
-    it('getValueSpherical returned undefined for unresolved property', function() {
-        var property = ReferenceProperty.fromString(new DynamicObjectCollection(), 'object.property');
-        expect(property.getValueSpherical()).toBeUndefined();
-    });
-
-    it('Resolves getValue property on direct collection', function() {
+    it('Resolves getValue property on collection', function() {
         var dynamicObjectCollection = new DynamicObjectCollection();
         createTestObject(dynamicObjectCollection, 'getValue');
         var property = ReferenceProperty.fromString(dynamicObjectCollection, testObjectLink);
@@ -99,60 +91,17 @@ defineSuite([
         expect(property.getValue(invalidTime, result)).toBeUndefined();
     });
 
-    it('Resolves getValue property on parent collection', function() {
-        var parent = new DynamicObjectCollection();
-        var dynamicObjectCollection = new DynamicObjectCollection();
-        dynamicObjectCollection.compositeCollection = parent;
-        createTestObject(parent, 'getValue');
-        var property = ReferenceProperty.fromString(dynamicObjectCollection, testObjectLink);
-        var result = {};
-        expect(property.getValue(validTime, result)).toEqual(result);
-        expect(result.expectedValue).toEqual(true);
-        expect(result.expectedTime).toEqual(validTime);
-        expect(property.getValue(invalidTime, result)).toBeUndefined();
-    });
-
-    it('Resolves getValue property on direct collection', function() {
+    it('equals works', function() {
         var dynamicObjectCollection = new DynamicObjectCollection();
         createTestObject(dynamicObjectCollection, 'getValue');
-        var property = ReferenceProperty.fromString(dynamicObjectCollection, testObjectLink);
-        var result = {};
-        expect(property.getValue(validTime, result)).toEqual(result);
-        expect(result.expectedValue).toEqual(true);
-        expect(result.expectedTime).toEqual(validTime);
-        expect(property.getValue(invalidTime, result)).toBeUndefined();
-    });
+        var left = ReferenceProperty.fromString(dynamicObjectCollection, testObjectLink);
+        var right = ReferenceProperty.fromString(dynamicObjectCollection, testObjectLink);
+        expect(left.equals(right)).toEqual(true);
 
-    it('Resolves getValueCartographic property on direct collection', function() {
-        var dynamicObjectCollection = new DynamicObjectCollection();
-        createTestObject(dynamicObjectCollection, 'getValueCartographic');
-        var property = ReferenceProperty.fromString(dynamicObjectCollection, testObjectLink);
-        var result = {};
-        expect(property.getValueCartographic(validTime, result)).toEqual(result);
-        expect(result.expectedValue).toEqual(true);
-        expect(result.expectedTime).toEqual(validTime);
-        expect(property.getValueCartographic(invalidTime, result)).toBeUndefined();
-    });
+        right = new ReferenceProperty(dynamicObjectCollection, 'testObject', 'property2');
+        expect(left.equals(right)).toEqual(false);
 
-    it('Resolves getValueCartesian property on direct collection', function() {
-        var dynamicObjectCollection = new DynamicObjectCollection();
-        createTestObject(dynamicObjectCollection, 'getValueCartesian');
-        var property = ReferenceProperty.fromString(dynamicObjectCollection, testObjectLink);
-        var result = {};
-        expect(property.getValueCartesian(validTime, result)).toEqual(result);
-        expect(result.expectedValue).toEqual(true);
-        expect(result.expectedTime).toEqual(validTime);
-        expect(property.getValueCartesian(invalidTime, result)).toBeUndefined();
-    });
-
-    it('Resolves getValueSpherical property on direct collection', function() {
-        var dynamicObjectCollection = new DynamicObjectCollection();
-        createTestObject(dynamicObjectCollection, 'getValueSpherical');
-        var property = ReferenceProperty.fromString(dynamicObjectCollection, testObjectLink);
-        var result = {};
-        expect(property.getValueSpherical(validTime, result)).toEqual(result);
-        expect(result.expectedValue).toEqual(true);
-        expect(result.expectedTime).toEqual(validTime);
-        expect(property.getValueSpherical(invalidTime, result)).toBeUndefined();
+        right = new ReferenceProperty(dynamicObjectCollection, 'testObject2', 'property');
+        expect(left.equals(right)).toEqual(false);
     });
 });
