@@ -7,6 +7,7 @@ define([
         '../Core/defined',
         '../Core/DeveloperError',
         '../Core/HermiteSpline',
+        '../Core/LinearSpline',
         '../Core/Math',
         '../Core/Matrix3',
         '../Core/Matrix4',
@@ -24,6 +25,7 @@ define([
         defined,
         DeveloperError,
         HermiteSpline,
+        LinearSpline,
         CesiumMath,
         Matrix3,
         Matrix4,
@@ -87,6 +89,13 @@ define([
         return Math.max(dx, dy);
     }
 
+    /*
+     * Creates a Spline Interpolator that defines a camera flight path designed to fly the camera
+     * out to an altitude where the entire globe is in view during the transition from start to destination.
+     * This transition between points helps ensure the camera does not path through terrain.
+     *
+     * @private
+     */
     function createPath3D(camera, ellipsoid, start, up, right, end, duration) {
         // get minimum altitude from which the whole ellipsoid is visible
         var radius = ellipsoid.maximumRadius;
@@ -193,7 +202,8 @@ define([
     var scratchStartRight = new Cartesian3();
     var currentFrame = new Matrix4();
 
-    function createUpdate3D(frameState, destination, duration, direction, up) {
+
+    function createUpdate3D(frameState, destination, duration, direction, up, linearPath) {
         var camera = frameState.camera;
         var ellipsoid = frameState.scene2D.projection.ellipsoid;
 
@@ -202,7 +212,15 @@ define([
         var startUp = Matrix4.multiplyByPointAsVector(camera.transform, camera.up, scratchStartUp);
         var startRight = Cartesian3.cross(startDirection, startUp, scratchStartRight);
 
-        var path = createPath3D(camera, ellipsoid, start, startUp, startRight, destination, duration);
+        var path;
+        if (linearPath) {
+            path = new LinearSpline({
+                points : [start, destination],
+                times : [0.0, duration]
+            });
+        } else {
+            path = createPath3D(camera, ellipsoid, start, startUp, startRight, destination, duration);
+        }
         var orientations = createOrientations3D(path, startDirection, startUp, direction, up);
 
         var update = function(value) {
@@ -224,6 +242,12 @@ define([
         return update;
     }
 
+    /*
+     * Creates a Spline Interpolator that defines a camera flight path designed to fly the camera
+     * out to an altitude where the entire map is in view during the transition from start to destination.
+     *
+     * @private
+     */
     function createPath2D(camera, ellipsoid, start, end, duration) {
         // get minimum altitude from which the whole map is visible
         var radius = ellipsoid.maximumRadius;
@@ -312,11 +336,19 @@ define([
                                   0, 1, 0, 0,
                                   0, 0, 0, 1);
 
-    function createUpdateCV(frameState, destination, duration, direction, up) {
+    function createUpdateCV(frameState, destination, duration, direction, up, linearPath) {
         var camera = frameState.camera;
         var ellipsoid = frameState.scene2D.projection.ellipsoid;
 
-        var path = createPath2D(camera, ellipsoid, Cartesian3.clone(camera.position), destination, duration);
+        var path;
+        if (linearPath) {
+            path = new LinearSpline({
+                points : [Cartesian3.clone(camera.position), destination],
+                times : [0.0, duration]
+            });
+        } else {
+            path = createPath2D(camera, ellipsoid, Cartesian3.clone(camera.position), destination, duration);
+        }
         var orientations = createOrientations2D(camera, path, direction, up);
 
         var update = function(value) {
@@ -338,14 +370,22 @@ define([
         return update;
     }
 
-    function createUpdate2D(frameState, destination, duration, direction, up) {
+    function createUpdate2D(frameState, destination, duration, direction, up, linearPath) {
         var camera = frameState.camera;
         var ellipsoid = frameState.scene2D.projection.ellipsoid;
 
         var start = Cartesian3.clone(camera.position);
         start.z = camera.frustum.right - camera.frustum.left;
 
-        var path = createPath2D(camera, ellipsoid, start, destination, duration);
+        var path;
+        if (linearPath) {
+            path = new LinearSpline({
+                points : [start, destination],
+                times : [0.0, duration]
+            });
+        } else {
+            path = createPath2D(camera, ellipsoid, start, destination, duration);
+        }
         var orientations = createOrientations2D(camera, path, Cartesian3.negate(Cartesian3.UNIT_Z), up);
 
         var height = camera.position.z;
@@ -404,6 +444,7 @@ define([
         var destination = description.destination;
         var direction = description.direction;
         var up = description.up;
+        var linearPath = defaultValue(description.linearPath, false);
 
         //>>includeStart('debug', pragmas.debug);
         if (!defined(scene)) {
@@ -512,16 +553,21 @@ define([
 
         var update;
         if (frameState.mode === SceneMode.SCENE3D) {
-            update = createUpdate3D(frameState, destination, duration, direction, up);
+            update = createUpdate3D(frameState, destination, duration, direction, up, linearPath);
         } else if (frameState.mode === SceneMode.SCENE2D) {
-            update = createUpdate2D(frameState, destination, duration, direction, up);
+            update = createUpdate2D(frameState, destination, duration, direction, up, linearPath);
         } else {
-            update = createUpdateCV(frameState, destination, duration, direction, up);
+            update = createUpdateCV(frameState, destination, duration, direction, up, linearPath);
+        }
+
+        var easeFunction = Tween.Easing.Sinusoidal.InOut;
+        if (linearPath) {
+            easeFunction = Tween.Easing.Linear.None;
         }
 
         return {
             duration : duration,
-            easingFunction : Tween.Easing.Sinusoidal.InOut,
+            easingFunction : easeFunction,
             startValue : {
                 time : 0.0
             },
@@ -542,6 +588,7 @@ define([
      * @param {Cartographic} description.destination The final position of the camera.
      * @param {Cartesian3} [description.direction] The final direction of the camera. By default, the direction will point towards the center of the frame in 3D and in the negative z direction in Columbus view or 2D.
      * @param {Cartesian3} [description.up] The final up direction. By default, the up direction will point towards local north in 3D and in the positive y direction in Columbus view or 2D.
+     * @param {Boolean} [description.linearPath] If true, a the camera will perform a simple linear interpolation to the destination.
      * @param {Number} [description.duration=3000] The duration of the animation in milliseconds.
      * @param {Function} [onComplete] The function to execute when the animation has completed.
      * @param {Function} [onCancel] The function to execute if the animation is cancelled.
@@ -589,6 +636,7 @@ define([
      * @param {Scene} scene The scene instance to use.
      * @param {Rectangle} description.destination The final position of the camera.
      * @param {Number} [description.duration=3000] The duration of the animation in milliseconds.
+     * @param {Boolean} [description.linearPath] If true, a the camera will perform a simple linear interpolation to the destination.
      * @param {Function} [onComplete] The function to execute when the animation has completed.
      * @param {Function} [onCancel] The function to execute if the animation is cancelled.
      * @param {Matrix4} [endReferenceFrame] The reference frame the camera will be in when the flight is completed.
