@@ -1,25 +1,25 @@
 /*global define*/
 define([
+        '../Core/BoundingSphere',
+        '../Core/Cartesian3',
+        '../Core/Color',
         '../Core/defaultValue',
         '../Core/defined',
         '../Core/defineProperties',
         '../Core/DeveloperError',
-        '../Core/BoundingSphere',
-        '../Core/Color',
-        '../Core/PolylinePipeline',
         '../Core/Matrix4',
-        '../Core/Cartesian3',
+        '../Core/PolylinePipeline',
         './Material'
     ], function(
+        BoundingSphere,
+        Cartesian3,
+        Color,
         defaultValue,
         defined,
         defineProperties,
         DeveloperError,
-        BoundingSphere,
-        Color,
-        PolylinePipeline,
         Matrix4,
-        Cartesian3,
+        PolylinePipeline,
         Material) {
     "use strict";
 
@@ -38,7 +38,7 @@ define([
      *
      * @see PolylineCollection
      *
-     * @demo <a href="http://cesiumjs.org/Cesium/Apps/Sandcastle/index.html?src=Polylines.html">Cesium Sandcastle Polyline Demo</a>
+     * @demo {@link http://cesiumjs.org/Cesium/Apps/Sandcastle/index.html?src=Polylines.html|Cesium Sandcastle Polyline Demo}
      */
     var Polyline = function(options, polylineCollection) {
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
@@ -170,7 +170,7 @@ define([
 
         /**
          * Gets and sets the surface appearance of the polyline.  This can be one of several built-in {@link Material} objects or a custom material, scripted with
-         * <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>.
+         * {@link https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric|Fabric}.
          * @memberof Polyline.prototype
          * @type {Material}
          */

@@ -416,15 +416,19 @@ define([
         return update;
     }
 
+    var dirScratch = new Cartesian3();
+    var rightScratch = new Cartesian3();
+    var upScratch = new Cartesian3();
+
     /**
      * Creates an animation to fly the camera from it's current position to a position given by a Cartesian. All arguments should
      * be given in world coordinates.
      *
      * @param {Scene} scene The scene instance to use.
-     * @param {Cartesian3} description.destination The final position of the camera.
-     * @param {Cartesian3} [description.direction] The final direction of the camera. By default, the direction will point towards the center of the frame in 3D and in the negative z direction in Columbus view or 2D.
-     * @param {Cartesian3} [description.up] The final up direction. By default, the up direction will point towards local north in 3D and in the positive y direction in Columbus view or 2D.
-     * @param {Number} [description.duration=3000] The duration of the animation in milliseconds.
+     * @param {Cartesian3} options.destination The final position of the camera.
+     * @param {Cartesian3} [options.direction] The final direction of the camera. By default, the direction will point towards the center of the frame in 3D and in the negative z direction in Columbus view or 2D.
+     * @param {Cartesian3} [options.up] The final up direction. By default, the up direction will point towards local north in 3D and in the positive y direction in Columbus view or 2D.
+     * @param {Number} [options.duration=3000] The duration of the animation in milliseconds.
      * @param {Function} [onComplete] The function to execute when the animation has completed.
      * @param {Function} [onCancel] The function to execute if the animation is cancelled.
      * @param {Matrix4} [endReferenceFrame] The reference frame the camera will be in when the flight is completed.
@@ -436,15 +440,12 @@ define([
      *
      * @see Scene#animations
      */
-    var dirScratch = new Cartesian3();
-    var rightScratch = new Cartesian3();
-    var upScratch = new Cartesian3();
-    CameraFlightPath.createAnimation = function(scene, description) {
-        description = defaultValue(description, defaultValue.EMPTY_OBJECT);
-        var destination = description.destination;
-        var direction = description.direction;
-        var up = description.up;
-        var linearPath = defaultValue(description.linearPath, false);
+    CameraFlightPath.createAnimation = function(scene, options) {
+        options = defaultValue(options, defaultValue.EMPTY_OBJECT);
+        var destination = options.destination;
+        var direction = options.direction;
+        var up = options.up;
+        var linearPath = defaultValue(options.linearPath, false);
 
         //>>includeStart('debug', pragmas.debug);
         if (!defined(scene)) {
@@ -461,7 +462,7 @@ define([
         }
         //>>includeEnd('debug');
 
-        var duration = defaultValue(description.duration, 3000.0);
+        var duration = defaultValue(options.duration, 3000.0);
         var frameState = scene.frameState;
         var controller = scene.screenSpaceCameraController;
         controller.enableInputs = false;
@@ -476,10 +477,10 @@ define([
             };
             return wrapped;
         };
-        var onComplete = wrapCallback(description.onComplete);
-        var onCancel = wrapCallback(description.onCancel);
+        var onComplete = wrapCallback(options.onComplete);
+        var onCancel = wrapCallback(options.onCancel);
 
-        var referenceFrame = description.endReferenceFrame;
+        var referenceFrame = options.endReferenceFrame;
         if (defined(referenceFrame)) {
             scene.camera.setTransform(referenceFrame);
         }
@@ -505,23 +506,23 @@ define([
             var newOnComplete = function() {
                 var position = destination;
                 if (frameState.mode === SceneMode.SCENE3D) {
-                    if (!defined(description.direction) && !defined(description.up)){
+                    if (!defined(options.direction) && !defined(options.up)){
                         dirScratch = Cartesian3.normalize(Cartesian3.negate(position, dirScratch), dirScratch);
                         rightScratch = Cartesian3.normalize(Cartesian3.cross(dirScratch, Cartesian3.UNIT_Z, rightScratch), rightScratch);
                     } else {
-                        dirScratch = description.direction;
-                        rightScratch = Cartesian3.normalize(Cartesian3.cross(dirScratch, description.up, rightScratch), rightScratch);
+                        dirScratch = options.direction;
+                        rightScratch = Cartesian3.normalize(Cartesian3.cross(dirScratch, options.up, rightScratch), rightScratch);
                     }
-                    upScratch = defaultValue(description.up, Cartesian3.cross(rightScratch, dirScratch, upScratch));
+                    upScratch = defaultValue(options.up, Cartesian3.cross(rightScratch, dirScratch, upScratch));
                 } else {
-                    if (!defined(description.direction) && !defined(description.up)){
+                    if (!defined(options.direction) && !defined(options.up)){
                         dirScratch = Cartesian3.negate(Cartesian3.UNIT_Z, dirScratch);
                         rightScratch = Cartesian3.normalize(Cartesian3.cross(dirScratch, Cartesian3.UNIT_Y, rightScratch), rightScratch);
                     } else {
-                        dirScratch = description.direction;
-                        rightScratch = Cartesian3.normalize(Cartesian3.cross(dirScratch, description.up, rightScratch), rightScratch);
+                        dirScratch = options.direction;
+                        rightScratch = Cartesian3.normalize(Cartesian3.cross(dirScratch, options.up, rightScratch), rightScratch);
                     }
-                    upScratch = defaultValue(description.up, Cartesian3.cross(rightScratch, dirScratch, upScratch));
+                    upScratch = defaultValue(options.up, Cartesian3.cross(rightScratch, dirScratch, upScratch));
                 }
 
                 Cartesian3.clone(position, frameState.camera.position);
@@ -585,11 +586,11 @@ define([
      * be given in world coordinates.
      *
      * @param {Scene} scene The scene instance to use.
-     * @param {Cartographic} description.destination The final position of the camera.
-     * @param {Cartesian3} [description.direction] The final direction of the camera. By default, the direction will point towards the center of the frame in 3D and in the negative z direction in Columbus view or 2D.
-     * @param {Cartesian3} [description.up] The final up direction. By default, the up direction will point towards local north in 3D and in the positive y direction in Columbus view or 2D.
-     * @param {Boolean} [description.linearPath] If true, a the camera will perform a simple linear interpolation to the destination.
-     * @param {Number} [description.duration=3000] The duration of the animation in milliseconds.
+     * @param {Cartographic} options.destination The final position of the camera.
+     * @param {Cartesian3} [options.direction] The final direction of the camera. By default, the direction will point towards the center of the frame in 3D and in the negative z direction in Columbus view or 2D.
+     * @param {Cartesian3} [options.up] The final up direction. By default, the up direction will point towards local north in 3D and in the positive y direction in Columbus view or 2D.
+     * @param {Number} [options.duration=3000] The duration of the animation in milliseconds.
+     * @param {Boolean} [options.linearPath] If true, a the camera will perform a simple linear interpolation to the destination   
      * @param {Function} [onComplete] The function to execute when the animation has completed.
      * @param {Function} [onCancel] The function to execute if the animation is cancelled.
      * @param {Matrix4} [endReferenceFrame] The reference frame the camera will be in when the flight is completed.
@@ -600,16 +601,16 @@ define([
      *
      * @see Scene#animations
      */
-    CameraFlightPath.createAnimationCartographic = function(scene, description) {
-        description = defaultValue(description, defaultValue.EMPTY_OBJECT);
-        var destination = description.destination;
+    CameraFlightPath.createAnimationCartographic = function(scene, options) {
+        options = defaultValue(options, defaultValue.EMPTY_OBJECT);
+        var destination = options.destination;
 
         //>>includeStart('debug', pragmas.debug);
         if (!defined(scene)) {
             throw new DeveloperError('scene is required.');
         }
         if (!defined(destination)) {
-            throw new DeveloperError('description.destination is required.');
+            throw new DeveloperError('options.destination is required.');
         }
         //>>includeEnd('debug');
 
@@ -624,9 +625,9 @@ define([
             throw new DeveloperError('frameState.mode cannot be SceneMode.MORPHING');
         }
 
-        var createAnimationDescription = clone(description);
-        createAnimationDescription.destination = c3destination;
-        return this.createAnimation(scene, createAnimationDescription);
+        var createAnimationoptions = clone(options);
+        createAnimationoptions.destination = c3destination;
+        return this.createAnimation(scene, createAnimationoptions);
     };
 
     /**
@@ -634,8 +635,8 @@ define([
      * be given in world coordinates.
      *
      * @param {Scene} scene The scene instance to use.
-     * @param {Rectangle} description.destination The final position of the camera.
-     * @param {Number} [description.duration=3000] The duration of the animation in milliseconds.
+     * @param {Rectangle} options.destination The final position of the camera.
+     * @param {Number} [options.duration=3000] The duration of the animation in milliseconds.
      * @param {Boolean} [description.linearPath] If true, a the camera will perform a simple linear interpolation to the destination.
      * @param {Function} [onComplete] The function to execute when the animation has completed.
      * @param {Function} [onCancel] The function to execute if the animation is cancelled.
@@ -647,9 +648,9 @@ define([
      *
      * @see Scene#animations
      */
-    CameraFlightPath.createAnimationRectangle = function(scene, description) {
-        description = defaultValue(description, defaultValue.EMPTY_OBJECT);
-        var rectangle = description.destination;
+    CameraFlightPath.createAnimationRectangle = function(scene, options) {
+        options = defaultValue(options, defaultValue.EMPTY_OBJECT);
+        var rectangle = options.destination;
         var frameState = scene.frameState;
 
         //>>includeStart('debug', pragmas.debug);
@@ -657,19 +658,19 @@ define([
             throw new DeveloperError('frameState is required.');
         }
         if (!defined(rectangle)) {
-            throw new DeveloperError('description.destination is required.');
+            throw new DeveloperError('options.destination is required.');
         }
         if (frameState.mode === SceneMode.MORPHING) {
             throw new DeveloperError('frameState.mode cannot be SceneMode.MORPHING');
         }
         //>>includeEnd('debug');
 
-        var createAnimationDescription = clone(description);
+        var createAnimationoptions = clone(options);
         var camera = frameState.camera;
         camera.getRectangleCameraCoordinates(rectangle, c3destination);
 
-        createAnimationDescription.destination = c3destination;
-        return this.createAnimation(scene, createAnimationDescription);
+        createAnimationoptions.destination = c3destination;
+        return this.createAnimation(scene, createAnimationoptions);
     };
 
     return CameraFlightPath;

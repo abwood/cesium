@@ -2,19 +2,19 @@
 define([
         '../Core/defaultValue',
         '../Core/VertexFormat',
-        './Appearance',
         '../Renderer/createShaderSource',
-        '../Shaders/Appearances/PolylineColorAppearanceVS',
         '../Shaders/Appearances/PerInstanceFlatColorAppearanceFS',
-        '../Shaders/PolylineCommon'
+        '../Shaders/Appearances/PolylineColorAppearanceVS',
+        '../Shaders/PolylineCommon',
+        './Appearance'
     ], function(
         defaultValue,
         VertexFormat,
-        Appearance,
         createShaderSource,
-        PolylineColorAppearanceVS,
         PerInstanceFlatColorAppearanceFS,
-        PolylineCommon) {
+        PolylineColorAppearanceVS,
+        PolylineCommon,
+        Appearance) {
     "use strict";
 
     /**
@@ -26,18 +26,18 @@ define([
      * @constructor
      *
      * @param {Boolean} [options.translucent=true] When <code>true</code>, the geometry is expected to appear translucent so {@link PolylineColorAppearance#renderState} has alpha blending enabled.
-     * @param {String} [options.vertexShaderSource=undefined] Optional GLSL vertex shader source to override the default vertex shader.
-     * @param {String} [options.fragmentShaderSource=undefined] Optional GLSL fragment shader source to override the default fragment shader.
-     * @param {RenderState} [options.renderState=undefined] Optional render state to override the default render state.
+     * @param {String} [options.vertexShaderSource] Optional GLSL vertex shader source to override the default vertex shader.
+     * @param {String} [options.fragmentShaderSource] Optional GLSL fragment shader source to override the default fragment shader.
+     * @param {RenderState} [options.renderState] Optional render state to override the default render state.
      *
      * @example
      * // A solid white line segment
      * var primitive = new Cesium.Primitive({
      *   geometryInstances : new Cesium.GeometryInstance({
      *     geometry : new Cesium.PolylineGeometry({
-     *       positions : ellipsoid.cartographicArrayToCartesianArray([
-     *         Cesium.Cartographic.fromDegrees(0.0, 0.0),
-     *         Cesium.Cartographic.fromDegrees(5.0, 0.0)
+     *       positions : Cesium.Cartesian3.fromDegreesArray([
+     *         0.0, 0.0,
+     *         5.0, 0.0
      *       ]),
      *       width : 10.0,
      *       vertexFormat : Cesium.PolylineColorApperance.VERTEX_FORMAT

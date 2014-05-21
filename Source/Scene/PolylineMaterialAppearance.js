@@ -3,22 +3,22 @@ define([
         '../Core/defaultValue',
         '../Core/defined',
         '../Core/VertexFormat',
-        './Material',
-        './Appearance',
         '../Renderer/createShaderSource',
         '../Shaders/Appearances/PolylineMaterialAppearanceVS',
+        '../Shaders/PolylineCommon',
         '../Shaders/PolylineFS',
-        '../Shaders/PolylineCommon'
+        './Appearance',
+        './Material'
     ], function(
         defaultValue,
         defined,
         VertexFormat,
-        Material,
-        Appearance,
         createShaderSource,
         PolylineMaterialAppearanceVS,
+        PolylineCommon,
         PolylineFS,
-        PolylineCommon) {
+        Appearance,
+        Material) {
     "use strict";
 
     /**
@@ -29,17 +29,17 @@ define([
      *
      * @param {Boolean} [options.translucent=true] When <code>true</code>, the geometry is expected to appear translucent so {@link PolylineMaterialAppearance#renderState} has alpha blending enabled.
      * @param {Material} [options.material=Material.ColorType] The material used to determine the fragment color.
-     * @param {String} [options.vertexShaderSource=undefined] Optional GLSL vertex shader source to override the default vertex shader.
-     * @param {String} [options.fragmentShaderSource=undefined] Optional GLSL fragment shader source to override the default fragment shader.
-     * @param {RenderState} [options.renderState=undefined] Optional render state to override the default render state.
+     * @param {String} [options.vertexShaderSource] Optional GLSL vertex shader source to override the default vertex shader.
+     * @param {String} [options.fragmentShaderSource] Optional GLSL fragment shader source to override the default fragment shader.
+     * @param {RenderState} [options.renderState] Optional render state to override the default render state.
      *
      * @example
      * var primitive = new Cesium.Primitive({
      *   geometryInstances : new Cesium.GeometryInstance({
      *     geometry : new Cesium.PolylineGeometry({
-     *       positions : ellipsoid.cartographicArrayToCartesianArray([
-     *         Cesium.Cartographic.fromDegrees(0.0, 0.0),
-     *         Cesium.Cartographic.fromDegrees(5.0, 0.0)
+     *       positions : Cesium.Cartesian3.fromDegreesArray([
+     *         0.0, 0.0,
+     *         5.0, 0.0
      *       ]),
      *       width : 10.0,
      *       vertexFormat : Cesium.PolylineMaterialAppearance.VERTEX_FORMAT
@@ -50,7 +50,7 @@ define([
      *   })
      * }));
      *
-     * @see <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>
+     * @see {@link https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric|Fabric}
      */
     var PolylineMaterialAppearance = function(options) {
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
@@ -69,7 +69,7 @@ define([
          *
          * @default Material.ColorType
          *
-         * @see <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>
+         * @see {@link https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric|Fabric}
          */
         this.material = defined(options.material) ? options.material : Material.fromType(Material.ColorType);
 

@@ -3,18 +3,18 @@ define([
         '../Core/defaultValue',
         '../Core/defined',
         '../Core/VertexFormat',
-        './Material',
-        './Appearance',
+        '../Shaders/Appearances/EllipsoidSurfaceAppearanceFS',
         '../Shaders/Appearances/EllipsoidSurfaceAppearanceVS',
-        '../Shaders/Appearances/EllipsoidSurfaceAppearanceFS'
+        './Appearance',
+        './Material'
     ], function(
         defaultValue,
         defined,
         VertexFormat,
-        Material,
-        Appearance,
+        EllipsoidSurfaceAppearanceFS,
         EllipsoidSurfaceAppearanceVS,
-        EllipsoidSurfaceAppearanceFS) {
+        Appearance,
+        Material) {
     "use strict";
 
     /**
@@ -32,9 +32,9 @@ define([
      * @param {Boolean} [options.translucent=true] When <code>true</code>, the geometry is expected to appear translucent so {@link EllipsoidSurfaceAppearance#renderState} has alpha blending enabled.
      * @param {Boolean} [options.aboveGround=false] When <code>true</code>, the geometry is expected to be on the ellipsoid's surface - not at a constant height above it - so {@link EllipsoidSurfaceAppearance#renderState} has backface culling enabled.
      * @param {Material} [options.material=Material.ColorType] The material used to determine the fragment color.
-     * @param {String} [options.vertexShaderSource=undefined] Optional GLSL vertex shader source to override the default vertex shader.
-     * @param {String} [options.fragmentShaderSource=undefined] Optional GLSL fragment shader source to override the default fragment shader.
-     * @param {RenderState} [options.renderState=undefined] Optional render state to override the default render state.
+     * @param {String} [options.vertexShaderSource] Optional GLSL vertex shader source to override the default vertex shader.
+     * @param {String} [options.fragmentShaderSource] Optional GLSL fragment shader source to override the default fragment shader.
+     * @param {RenderState} [options.renderState] Optional render state to override the default render state.
      *
      * @example
      * var primitive = new Cesium.Primitive({
@@ -49,7 +49,7 @@ define([
      *   })
      * });
      *
-     * @see <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>
+     * @see {@link https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric|Fabric}
      */
     var EllipsoidSurfaceAppearance = function(options) {
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
@@ -65,7 +65,7 @@ define([
          *
          * @default Material.ColorType
          *
-         * @see <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>
+         * @see {@link https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric|Fabric}
          */
         this.material = (defined(options.material)) ? options.material : Material.fromType(Material.ColorType);
 

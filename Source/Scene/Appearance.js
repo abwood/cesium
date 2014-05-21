@@ -3,16 +3,16 @@ define([
         '../Core/clone',
         '../Core/defaultValue',
         '../Core/defined',
-        '../Renderer/BlendingState',
-        '../Renderer/CullFace',
-        '../Renderer/createShaderSource'
+        '../Renderer/createShaderSource',
+        './BlendingState',
+        './CullFace'
     ], function(
         clone,
         defaultValue,
         defined,
+        createShaderSource,
         BlendingState,
-        CullFace,
-        createShaderSource) {
+        CullFace) {
     "use strict";
 
     /**
@@ -39,7 +39,7 @@ define([
          *
          * @type Material
          *
-         * @see <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>
+         * @see {@link https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric|Fabric}
          */
         this.material = options.material;
 

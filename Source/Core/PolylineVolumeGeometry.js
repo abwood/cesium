@@ -189,13 +189,22 @@ define([
      * @see PolylineVolumeGeometry#createGeometry
      *
      * @example
+     * function computeCircle(radius) {
+     *   var positions = [];
+     *   for (var i = 0; i < 360; i++) {
+     *     var radians = Cesium.Math.toRadians(i);
+     *     positions.push(new Cesium.Cartesian2(radius * Math.cos(radians), radius * Math.sin(radians)));
+     *   }
+     *   return positions;
+     * }
+     *
      * var volume = new Cesium.PolylineVolumeGeometry({
-     *     vertexFormat : Cesium.VertexFormat.POSITION_ONLY,
-     *     polylinePositions : ellipsoid.cartographicArrayToCartesianArray([
-     *         Cesium.Cartographic.fromDegrees(-72.0, 40.0),
-     *         Cesium.Cartographic.fromDegrees(-70.0, 35.0)
-     *     ]),
-     *     shapePositions : Cesium.Shapes.compute2DCircle(100000.0)
+     *   vertexFormat : Cesium.VertexFormat.POSITION_ONLY,
+     *   polylinePositions : Cesium.Cartesian3.fromDegreesArray([
+     *     -72.0, 40.0,
+     *     -70.0, 35.0
+     *   ]),
+     *   shapePositions : compute2DCircle(100000.0)
      * });
      */
     var PolylineVolumeGeometry = function(options) {
@@ -222,6 +231,8 @@ define([
         this._workerName = 'createPolylineVolumeGeometry';
     };
 
+    var brScratch = new BoundingRectangle();
+
     /**
      * Computes the geometric representation of a polyline with a volume, including its vertices, indices, and a bounding sphere.
      * @memberof PolylineVolumeGeometry
@@ -233,7 +244,6 @@ define([
      * @exception {DeveloperError} Count of unique polyline positions must be greater than 1.
      * @exception {DeveloperError} Count of unique shape positions must be at least 3.
      */
-    var brScratch = new BoundingRectangle();
     PolylineVolumeGeometry.createGeometry = function(polylineVolumeGeometry) {
         var positions = polylineVolumeGeometry._positions;
         var cleanPositions = PolylineVolumeGeometryLibrary.removeDuplicatesFromPositions(positions, polylineVolumeGeometry._ellipsoid);

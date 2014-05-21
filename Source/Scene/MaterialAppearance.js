@@ -4,27 +4,27 @@ define([
         '../Core/defined',
         '../Core/freezeObject',
         '../Core/VertexFormat',
-        './Material',
-        './Appearance',
-        '../Shaders/Appearances/BasicMaterialAppearanceVS',
-        '../Shaders/Appearances/BasicMaterialAppearanceFS',
-        '../Shaders/Appearances/TexturedMaterialAppearanceVS',
-        '../Shaders/Appearances/TexturedMaterialAppearanceFS',
+        '../Shaders/Appearances/AllMaterialAppearanceFS',
         '../Shaders/Appearances/AllMaterialAppearanceVS',
-        '../Shaders/Appearances/AllMaterialAppearanceFS'
+        '../Shaders/Appearances/BasicMaterialAppearanceFS',
+        '../Shaders/Appearances/BasicMaterialAppearanceVS',
+        '../Shaders/Appearances/TexturedMaterialAppearanceFS',
+        '../Shaders/Appearances/TexturedMaterialAppearanceVS',
+        './Appearance',
+        './Material'
     ], function(
         defaultValue,
         defined,
         freezeObject,
         VertexFormat,
-        Material,
-        Appearance,
-        BasicMaterialAppearanceVS,
-        BasicMaterialAppearanceFS,
-        TexturedMaterialAppearanceVS,
-        TexturedMaterialAppearanceFS,
+        AllMaterialAppearanceFS,
         AllMaterialAppearanceVS,
-        AllMaterialAppearanceFS) {
+        BasicMaterialAppearanceFS,
+        BasicMaterialAppearanceVS,
+        TexturedMaterialAppearanceFS,
+        TexturedMaterialAppearanceVS,
+        Appearance,
+        Material) {
     "use strict";
 
     /**
@@ -40,9 +40,9 @@ define([
      * @param {Boolean} [options.closed=false] When <code>true</code>, the geometry is expected to be closed so {@link MaterialAppearance#renderState} has backface culling enabled.
      * @param {MaterialAppearance.MaterialSupport} [options.materialSupport=MaterialAppearance.MaterialSupport.TEXTURED] The type of materials that will be supported.
      * @param {Material} [options.material=Material.ColorType] The material used to determine the fragment color.
-     * @param {String} [options.vertexShaderSource=undefined] Optional GLSL vertex shader source to override the default vertex shader.
-     * @param {String} [options.fragmentShaderSource=undefined] Optional GLSL fragment shader source to override the default fragment shader.
-     * @param {RenderState} [options.renderState=undefined] Optional render state to override the default render state.
+     * @param {String} [options.vertexShaderSource] Optional GLSL vertex shader source to override the default vertex shader.
+     * @param {String} [options.fragmentShaderSource] Optional GLSL fragment shader source to override the default fragment shader.
+     * @param {RenderState} [options.renderState] Optional render state to override the default render state.
      *
      * @example
      * var primitive = new Cesium.Primitive({
@@ -58,7 +58,7 @@ define([
      *   })
      * });
      *
-     * @see <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>
+     * @see {@link https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric|Fabric}
      */
     var MaterialAppearance = function(options) {
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
@@ -75,7 +75,7 @@ define([
          *
          * @default Material.ColorType
          *
-         * @see <a href='https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric'>Fabric</a>
+         * @see {@link https://github.com/AnalyticalGraphicsInc/cesium/wiki/Fabric|Fabric}
          */
         this.material = (defined(options.material)) ? options.material : Material.fromType(Material.ColorType);
 

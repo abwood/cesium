@@ -1,119 +1,160 @@
 /*global define*/
 define([
-        '../Core/Math',
+        '../Core/BoundingRectangle',
+        '../Core/BoundingSphere',
+        '../Core/Cartesian2',
+        '../Core/Cartesian3',
         '../Core/Color',
+        '../Core/ColorGeometryInstanceAttribute',
         '../Core/defaultValue',
         '../Core/defined',
         '../Core/defineProperties',
         '../Core/destroyObject',
         '../Core/DeveloperError',
-        '../Core/GeographicProjection',
         '../Core/Ellipsoid',
-        '../Core/Event',
-        '../Core/Occluder',
-        '../Core/BoundingRectangle',
-        '../Core/BoundingSphere',
-        '../Core/Cartesian2',
-        '../Core/Cartesian3',
-        '../Core/Intersect',
-        '../Core/Interval',
-        '../Core/Matrix4',
-        '../Core/JulianDate',
         '../Core/EllipsoidGeometry',
+        '../Core/Event',
+        '../Core/GeographicProjection',
         '../Core/GeometryInstance',
         '../Core/GeometryPipeline',
-        '../Core/ColorGeometryInstanceAttribute',
-        '../Core/ShowGeometryInstanceAttribute',
+        '../Core/Intersect',
+        '../Core/Interval',
+        '../Core/JulianDate',
+        '../Core/Math',
+        '../Core/Matrix4',
         '../Core/mergeSort',
-        '../Renderer/Context',
+        '../Core/Occluder',
+        '../Core/ShowGeometryInstanceAttribute',
         '../Renderer/ClearCommand',
+        '../Renderer/Context',
         '../Renderer/PassState',
-        '../Renderer/Pass',
-        './Camera',
-        './ScreenSpaceCameraController',
-        './CompositePrimitive',
-        './CullingVolume',
         './AnimationCollection',
+        './Camera',
+        './CreditDisplay',
+        './CullingVolume',
+        './FrameState',
+        './FrustumCommands',
+        './FXAA',
+        './OIT',
+        './OrthographicFrustum',
+        './Pass',
+        './PerformanceDisplay',
+        './PerInstanceColorAppearance',
+        './PerspectiveFrustum',
+        './PerspectiveOffCenterFrustum',
+        './Primitive',
+        './PrimitiveCollection',
         './SceneMode',
         './SceneTransforms',
         './SceneTransitioner',
-        './FrameState',
-        './OrthographicFrustum',
-        './PerspectiveFrustum',
-        './PerspectiveOffCenterFrustum',
-        './FrustumCommands',
-        './PerformanceDisplay',
-        './Primitive',
-        './PerInstanceColorAppearance',
-        './SunPostProcess',
-        './CreditDisplay',
-        './OIT',
-        './FXAA'
+        './ScreenSpaceCameraController',
+        './SunPostProcess'
     ], function(
-        CesiumMath,
+        BoundingRectangle,
+        BoundingSphere,
+        Cartesian2,
+        Cartesian3,
         Color,
+        ColorGeometryInstanceAttribute,
         defaultValue,
         defined,
         defineProperties,
         destroyObject,
         DeveloperError,
-        GeographicProjection,
         Ellipsoid,
-        Event,
-        Occluder,
-        BoundingRectangle,
-        BoundingSphere,
-        Cartesian2,
-        Cartesian3,
-        Intersect,
-        Interval,
-        Matrix4,
-        JulianDate,
         EllipsoidGeometry,
+        Event,
+        GeographicProjection,
         GeometryInstance,
         GeometryPipeline,
-        ColorGeometryInstanceAttribute,
-        ShowGeometryInstanceAttribute,
+        Intersect,
+        Interval,
+        JulianDate,
+        CesiumMath,
+        Matrix4,
         mergeSort,
-        Context,
+        Occluder,
+        ShowGeometryInstanceAttribute,
         ClearCommand,
+        Context,
         PassState,
-        Pass,
-        Camera,
-        ScreenSpaceCameraController,
-        CompositePrimitive,
-        CullingVolume,
         AnimationCollection,
+        Camera,
+        CreditDisplay,
+        CullingVolume,
+        FrameState,
+        FrustumCommands,
+        FXAA,
+        OIT,
+        OrthographicFrustum,
+        Pass,
+        PerformanceDisplay,
+        PerInstanceColorAppearance,
+        PerspectiveFrustum,
+        PerspectiveOffCenterFrustum,
+        Primitive,
+        PrimitiveCollection,
         SceneMode,
         SceneTransforms,
         SceneTransitioner,
-        FrameState,
-        OrthographicFrustum,
-        PerspectiveFrustum,
-        PerspectiveOffCenterFrustum,
-        FrustumCommands,
-        PerformanceDisplay,
-        Primitive,
-        PerInstanceColorAppearance,
-        SunPostProcess,
-        CreditDisplay,
-        OIT,
-        FXAA) {
+        ScreenSpaceCameraController,
+        SunPostProcess) {
     "use strict";
 
     /**
      * The container for all 3D graphical objects and state in a Cesium virtual scene.  Generally,
      * a scene is not created directly; instead, it is implicitly created by {@link CesiumWidget}.
+     * <p>
+     * <em><code>contextOptions</code> parameter details:</em>
+     * </p>
+     * <p>
+     * The default values are:
+     * <code>
+     * {
+     *   webgl : {
+     *     alpha : false,
+     *     depth : true,
+     *     stencil : false,
+     *     antialias : true,
+     *     premultipliedAlpha : true,
+     *     preserveDrawingBuffer : false
+     *     failIfMajorPerformanceCaveat : true
+     *   },
+     *   allowTextureFilterAnisotropic : true
+     * }
+     * </code>
+     * </p>
+     * <p>
+     * The <code>webgl</code> property corresponds to the {@link http://www.khronos.org/registry/webgl/specs/latest/#5.2|WebGLContextAttributes}
+     * object used to create the WebGL context.
+     * </p>
+     * <p>
+     * <code>options.webgl.alpha</code> defaults to false, which can improve performance compared to the standard WebGL default
+     * of true.  If an application needs to composite Cesium above other HTML elements using alpha-blending, set
+     * <code>options.webgl.alpha</code> to true.
+     * </p>
+     * <p>
+     * <code>options.webgl.failIfMajorPerformanceCaveat</code> defaults to true, which ensures a context is not successfully created
+     * if the system has a major performance issue such as only supporting software rendering.  The standard WebGL default is false,
+     * which is not appropriate for almost any Cesium app.
+     * </p>
+     * <p>
+     * The other <code>options.webgl</code> properties match the WebGL defaults for {@link http://www.khronos.org/registry/webgl/specs/latest/#5.2|WebGLContextAttributes}.
+     * </p>
+     * <p>
+     * <code>options.allowTextureFilterAnisotropic</code> defaults to true, which enables anisotropic texture filtering when the
+     * WebGL extension is supported.  Setting this to false will improve performance, but hurt visual quality, especially for horizon views.
+     * </p>
      *
      * @alias Scene
      * @constructor
      *
-     * @param {HTMLCanvasElement} canvas The HTML canvas element to create the scene for.
-     * @param {Object} [contextOptions=undefined] Context and WebGL creation properties corresponding to {@link Context#options}.
-     * @param {HTMLElement} [creditContainer=undefined] The HTML element in which the credits will be displayed.
+     * @param {Canvas} canvas The HTML canvas element to create the scene for.
+     * @param {Object} [contextOptions] Context and WebGL creation properties.  See details above.
+     * @param {Element} [creditContainer] The HTML element in which the credits will be displayed.
      *
      * @see CesiumWidget
-     * @see <a href='http://www.khronos.org/registry/webgl/specs/latest/#5.2'>WebGLContextAttributes</a>
+     * @see {@link http://www.khronos.org/registry/webgl/specs/latest/#5.2|WebGLContextAttributes}
      *
      * @example
      * // Create scene without anisotropic texture filtering
@@ -138,7 +179,7 @@ define([
         this._canvas = canvas;
         this._context = context;
         this._globe = undefined;
-        this._primitives = new CompositePrimitive();
+        this._primitives = new PrimitiveCollection();
         this._pickFramebuffer = undefined;
         this._camera = new Camera(this);
         this._screenSpaceCameraController = new ScreenSpaceCameraController(canvas, this._camera);
@@ -158,14 +199,14 @@ define([
 
         this._fxaa = new FXAA();
 
-        this._clearColorCommand = new ClearCommand();
-        this._clearColorCommand.color = new Color();
-        this._clearColorCommand.owner = this;
-
-        var depthClearCommand = new ClearCommand();
-        depthClearCommand.depth = 1.0;
-        depthClearCommand.owner = this;
-        this._depthClearCommand = depthClearCommand;
+        this._clearColorCommand = new ClearCommand({
+            color : new Color(),
+            owner : this
+        });
+        this._depthClearCommand = new ClearCommand({
+            depth : 1.0,
+            owner : this
+        });
 
         this._transitioner = new SceneTransitioner(this);
 
@@ -405,7 +446,6 @@ define([
         this.fxaa = false;
 
         this._performanceDisplay = undefined;
-
         this._debugSphere = undefined;
 
         // initial guess at frustums.
@@ -435,7 +475,7 @@ define([
          * The drawingBufferWidth of the underlying GL context.
          * @memberof Scene.prototype
          * @type {Number}
-         * @see <a href='https://www.khronos.org/registry/webgl/specs/1.0/#DOM-WebGLRenderingContext-drawingBufferWidth'>drawingBufferWidth</a>
+         * @see {@link https://www.khronos.org/registry/webgl/specs/1.0/#DOM-WebGLRenderingContext-drawingBufferWidth|drawingBufferWidth}
          */
         drawingBufferHeight : {
             get : function() {
@@ -447,7 +487,7 @@ define([
          * The drawingBufferHeight of the underlying GL context.
          * @memberof Scene.prototype
          * @type {Number}
-         * @see <a href='https://www.khronos.org/registry/webgl/specs/1.0/#DOM-WebGLRenderingContext-drawingBufferHeight'>drawingBufferHeight</a>
+         * @see {@link https://www.khronos.org/registry/webgl/specs/1.0/#DOM-WebGLRenderingContext-drawingBufferHeight|drawingBufferHeight}
          */
         drawingBufferWidth : {
             get : function() {
@@ -459,7 +499,7 @@ define([
          * The maximum aliased line width, in pixels, supported by this WebGL implementation.  It will be at least one.
          * @memberof Scene.prototype
          * @type {Number}
-         * @see <a href='http://www.khronos.org/opengles/sdk/2.0/docs/man/glGet.xml'>glGet</a> with <code>ALIASED_LINE_WIDTH_RANGE</code>.
+         * @see {@link http://www.khronos.org/opengles/sdk/2.0/docs/man/glGet.xml|glGet} with <code>ALIASED_LINE_WIDTH_RANGE</code>.
          */
         maximumAliasedLineWidth : {
             get : function() {
@@ -486,7 +526,7 @@ define([
         /**
          * Gets the collection of primitives.
          * @memberof Scene.prototype
-         * @type {CompositePrimitive}
+         * @type {PrimitiveCollection}
          */
         primitives : {
             get : function() {
@@ -600,6 +640,15 @@ define([
         postRender : {
             get : function() {
                 return this._postRender;
+            }
+        },
+
+        /**
+         * @private
+         */
+        context : {
+            get : function() {
+                return this._context;
             }
         }
     });
@@ -812,7 +861,7 @@ define([
     }
 
     function createDebugFragmentShaderProgram(command, scene, shaderProgram) {
-        var context = scene._context;
+        var context = scene.context;
         var sp = defaultValue(shaderProgram, command.shaderProgram);
         var fragmentShaderSource = sp.fragmentShaderSource;
         var renamedFS = fragmentShaderSource.replace(/void\s+main\s*\(\s*(?:void)?\s*\)/g, 'void czm_Debug_main()');
@@ -843,15 +892,15 @@ define([
 
         var source = renamedFS + '\n' + newMain;
         var attributeLocations = getAttributeLocations(sp);
-        return context.shaderCache.getShaderProgram(sp.vertexShaderSource, source, attributeLocations);
+        return context.createShaderProgram(sp.vertexShaderSource, source, attributeLocations);
     }
 
     function executeDebugCommand(command, scene, passState, renderState, shaderProgram) {
         if (defined(command.shaderProgram) || defined(shaderProgram)) {
             // Replace shader for frustum visualization
             var sp = createDebugFragmentShaderProgram(command, scene, shaderProgram);
-            command.execute(scene._context, passState, renderState, sp);
-            sp.release();
+            command.execute(scene.context, passState, renderState, sp);
+            sp.destroy();
         }
     }
 
@@ -957,7 +1006,7 @@ define([
     }
 
     function executeTranslucentCommandsSorted(scene, executeFunction, passState, commands) {
-        var context = scene._context;
+        var context = scene.context;
 
         mergeSort(commands, translucentCompare, scene._camera.positionWC);
 
@@ -974,7 +1023,7 @@ define([
     function executeCommands(scene, passState, clearColor, picking) {
         var frameState = scene._frameState;
         var camera = scene._camera;
-        var context = scene._context;
+        var context = scene.context;
         var us = context.uniformState;
 
         var frustum;
@@ -989,7 +1038,7 @@ define([
         if (defined(scene.sun) && scene.sunBloom !== scene._sunBloom) {
             if (scene.sunBloom) {
                 scene._sunPostProcess = new SunPostProcess();
-            } else {
+            } else if(defined(scene._sunPostProcess)){
                 scene._sunPostProcess = scene._sunPostProcess.destroy();
             }
 
@@ -1121,7 +1170,7 @@ define([
     }
 
     function executeOverlayCommands(scene, passState) {
-        var context = scene._context;
+        var context = scene.context;
         var commandList = scene._overlayCommandList;
         var length = commandList.length;
         for (var i = 0; i < length; ++i) {
@@ -1130,7 +1179,7 @@ define([
     }
 
     function updatePrimitives(scene) {
-        var context = scene._context;
+        var context = scene.context;
         var frameState = scene._frameState;
         var commandList = scene._commandList;
 
@@ -1156,27 +1205,7 @@ define([
     }
 
     /**
-     * Creates a new texture atlas.
-     *
-     * @memberof Scene
-     *
-     * @param {PixelFormat} [options.pixelFormat = PixelFormat.RGBA] The pixel format of the texture.
-     * @param {Number} [options.borderWidthInPixels = 1] The amount of spacing between adjacent images in pixels.
-     * @param {Cartesian2} [options.initialSize = new Cartesian2(16.0, 16.0)] The initial side lengths of the texture.
-     * @param {Array} [options.images=undefined] Array of {@link Image} to be added to the atlas. Same as calling addImages(images).
-     * @param {Image} [options.image=undefined] Single image to be added to the atlas. Same as calling addImage(image).
-     *
-     * @returns {TextureAtlas} The new texture atlas.
-     *
-     * @see TextureAtlas
-     */
-    Scene.prototype.createTextureAtlas = function(options) {
-        return this._context.createTextureAtlas(options);
-    };
-
-    /**
-     * DOC_TBA
-     * @memberof Scene
+     * @private
      */
     Scene.prototype.initializeFrame = function() {
         // Destroy released shaders once every 120 frames to avoid thrashing the cache
@@ -1197,7 +1226,7 @@ define([
 
         scene._preRender.raiseEvent(scene, time);
 
-        var us = scene._context.uniformState;
+        var us = scene.context.uniformState;
         var frameState = scene._frameState;
 
         var frameNumber = CesiumMath.incrementWrap(frameState.frameNumber, 15000000.0, 1.0);
@@ -1205,7 +1234,7 @@ define([
         frameState.passes.render = true;
         frameState.creditDisplay.beginFrame();
 
-        var context = scene._context;
+        var context = scene.context;
         us.update(context, frameState);
 
         scene._commandList.length = 0;
@@ -1247,8 +1276,7 @@ define([
     }
 
     /**
-     * DOC_TBA
-     * @memberof Scene
+     * @private
      */
     Scene.prototype.render = function(time) {
         try {
@@ -1519,16 +1547,39 @@ define([
     };
 
     /**
-     * DOC_TBA
+     * Returns true if this object was destroyed; otherwise, false.
+     * <br /><br />
+     * If this object was destroyed, it should not be used; calling any function other than
+     * <code>isDestroyed</code> will result in a {@link DeveloperError} exception.
+     *
      * @memberof Scene
+     *
+     * @returns {Boolean} <code>true</code> if this object was destroyed; otherwise, <code>false</code>.
+     *
+     * @see Scene#destroy
      */
     Scene.prototype.isDestroyed = function() {
         return false;
     };
 
     /**
-     * DOC_TBA
+     * Destroys the WebGL resources held by this object.  Destroying an object allows for deterministic
+     * release of WebGL resources, instead of relying on the garbage collector to destroy this object.
+     * <br /><br />
+     * Once an object is destroyed, it should not be used; calling any function other than
+     * <code>isDestroyed</code> will result in a {@link DeveloperError} exception.  Therefore,
+     * assign the return value (<code>undefined</code>) to the object as done in the example.
+     *
      * @memberof Scene
+     *
+     * @returns {undefined}
+     *
+     * @exception {DeveloperError} This object was destroyed, i.e., destroy() was called.
+     *
+     * @see Scene#isDestroyed
+     *
+     * @example
+     * scene = scene && scene.destroy();
      */
     Scene.prototype.destroy = function() {
         this._animations.removeAll();

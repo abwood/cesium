@@ -1,5 +1,6 @@
 /*global define*/
-define(['../Core/defaultValue',
+define([
+        '../Core/defaultValue',
         '../Core/defined',
         '../Core/defineProperties',
         '../Core/DeveloperError',
@@ -22,7 +23,7 @@ define(['../Core/defaultValue',
      * A {@link PositionProperty} whose value is an array whose items are the computed value
      * of other PositionProperty instances.
      *
-     * @alias PositionProperty
+     * @alias PositionPropertyArray
      * @constructor
      *
      * @param {Array} [value] An array of Property instances.

@@ -32,11 +32,7 @@ define([
     "use strict";
 
     /**
-     * DOC_TBA
-     *
-     * @alias UniformState
-     *
-     * @internalConstructor
+     * @private
      */
     var UniformState = function() {
         this._viewport = new BoundingRectangle();
@@ -54,15 +50,7 @@ define([
         this._currentFrustum = new Cartesian2();
 
         /**
-         * Gets the current frame state.
-         *
-         * @type {FrameState}
-         *
-         * @default undefined
-         *
          * @readonly
-         *
-         * @see czm_frameNumber
          */
         this.frameState = undefined;
 
@@ -155,11 +143,11 @@ define([
         this._cameraUp = new Cartesian3();
         this._frustum2DWidth = 0.0;
         this._eyeHeight2D = new Cartesian2();
+        this._resolutionScale = 1.0;
     };
 
     defineProperties(UniformState.prototype, {
         /**
-         * DOC_TBA
          * @memberof UniformState.prototype
          * @type {BoundingRectangle}
          */
@@ -192,10 +180,6 @@ define([
             }
         },
 
-        /**
-         * DOC_TBA
-         * @memberof UniformState.prototype
-         */
         viewportOrthographic : {
             get : function() {
                 cleanViewport(this);
@@ -203,10 +187,6 @@ define([
             }
         },
 
-        /**
-         * DOC_TBA
-         * @memberof UniformState.prototype
-         */
         viewportTransformation : {
             get : function() {
                 cleanViewport(this);
@@ -215,7 +195,6 @@ define([
         },
 
         /**
-         * DOC_TBA
          * @memberof UniformState.prototype
          * @type {Matrix4}
          */
@@ -249,7 +228,6 @@ define([
         },
 
         /**
-         * The inverse model matrix used to define the {@link czm_inverseModel} GLSL uniform.
          * @memberof UniformState.prototype
          * @type {Matrix4}
          */
@@ -283,7 +261,6 @@ define([
         },
 
         /**
-         * DOC_TBA
          * @memberof UniformState.prototype
          * @type {Matrix4}
          */
@@ -327,7 +304,6 @@ define([
         },
 
         /**
-         * The 3x3 rotation matrix of the current 3D view matrix ({@link UniformState#view3D}).
          * @memberof UniformState.prototype
          * @type {Matrix3}
          */
@@ -339,7 +315,6 @@ define([
         },
 
         /**
-         * The 4x4 inverse-view matrix that transforms from eye to world coordinates.
          * @memberof UniformState.prototype
          * @type {Matrix4}
          */
@@ -368,8 +343,7 @@ define([
         },
 
         /**
-         * The 3x3 rotation matrix of the current inverse-view matrix ({@link UniformState#inverseView}).
-         * @memberof UniformState,prototype
+         * @memberof UniformState.prototype
          * @type {Matrix3}
          */
         inverseViewRotation : {
@@ -391,9 +365,8 @@ define([
         },
 
         /**
-         * DOC_TBA
-         * @memberof UniformState,prototype
-         * @teyp {Matrix4}
+         * @memberof UniformState.prototype
+         * @type {Matrix4}
          */
         projection : {
             get : function() {
@@ -402,7 +375,6 @@ define([
         },
 
         /**
-         * DOC_TBA
          * @memberof UniformState.prototype
          * @type {Matrix4}
          */
@@ -424,7 +396,6 @@ define([
         },
 
         /**
-         * DOC_TBA
          * @memberof UniformState.prototype
          * @type {Matrix4}
          */
@@ -435,7 +406,6 @@ define([
         },
 
         /**
-         * The model-view matrix.
          * @memberof UniformState.prototype
          * @type {Matrix4}
          */
@@ -472,7 +442,6 @@ define([
         },
 
         /**
-         * The inverse of the model-view matrix.
          * @memberof UniformState.prototype
          * @type {Matrix4}
          */
@@ -498,7 +467,6 @@ define([
         },
 
         /**
-         * DOC_TBA
          * @memberof UniformState.prototype
          * @type {Matrix4}
          */
@@ -510,8 +478,7 @@ define([
         },
 
         /**
-         * The inverse view-projection matrix
-         * @memberof UniformState.protoype
+         * @memberof UniformState.prototype
          * @type {Matrix4}
          */
         inverseViewProjection : {
@@ -522,7 +489,6 @@ define([
         },
 
         /**
-         * DOC_TBA
          * @memberof UniformState.prototype
          * @type {Matrix4}
          */
@@ -535,7 +501,6 @@ define([
         },
 
         /**
-         * The inverse model-view-projection matrix.
          * @memberof UniformState.prototype
          * @type {Matrix4}
          */
@@ -560,7 +525,6 @@ define([
         },
 
         /**
-         * DOC_TBA
          * @memberof UniformState.prototype
          * @type {Matrix4}
          */
@@ -762,12 +726,14 @@ define([
         },
 
         /**
-         * DOC_TBA
+         * Gets the scaling factor for transforming from the canvas
+         * pixel space to canvas coordinate space.
          * @memberof UniformState.prototype
+         * @type {Number}
          */
-        highResolutionSnapScale : {
+        resolutionScale : {
             get : function() {
-                return 1.0;
+                return this._resolutionScale;
             }
         }
     });
@@ -878,6 +844,9 @@ define([
     UniformState.prototype.update = function(context, frameState) {
         this._mode = frameState.mode;
         this._mapProjection = frameState.scene2D.projection;
+
+        var canvas = context._canvas;
+        this._resolutionScale = canvas.width / canvas.clientWidth;
 
         var camera = frameState.camera;
 
