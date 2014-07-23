@@ -1,6 +1,7 @@
 /*global define*/
 define([
         '../Core/BoundingSphere',
+        '../Core/Cartesian2',
         '../Core/Cartesian3',
         '../Core/Cartographic',
         '../Core/defined',
@@ -11,6 +12,7 @@ define([
         './createTaskProcessorWorker'
     ], function(
         BoundingSphere,
+        Cartesian2,
         Cartesian3,
         Cartographic,
         defined,
@@ -372,18 +374,80 @@ define([
         return CesiumMath.lerp(this.first.getV(), this.second.getV(), this.ratio);
     };
 
+    function toUInt(value) {
+        return (~~value) >>> 0;
+    }
+
+    var signNotZero = function(v) {
+        return v < 0.0 ? -1.0 : 1.0;
+    };
+
+    var toSNorm = function(f)
+    {
+        return toUInt((f * 0.5 + 0.5) * 255.0);
+    };
+
+    var octDecode = function(x, y) {
+        var vx = x / 255.0 * 2.0 - 1.0;
+        var vy = y / 255.0 * 2.0 - 1.0;
+        var vz = 1.0 - (Math.abs(vx) + Math.abs(vy));
+
+        if (vz < 0.0)
+        {
+            var oldVX = x / 255.0 * 2.0 - 1.0;
+            vx = (1.0 - Math.abs(vy)) * signNotZero(oldVX);
+            vy = (1.0 - Math.abs(oldVX)) * signNotZero(vy);
+        }
+
+        var result = new Cartesian3(vx, vy, vz);
+        return Cartesian3.normalize(result, result);
+    };
+
+    var octEncode = function(vector, out) {
+        out.x = vector.x / (Math.abs(vector.x) + Math.abs(vector.y) + Math.abs(vector.z));
+        out.y = vector.y / (Math.abs(vector.x) + Math.abs(vector.y) + Math.abs(vector.z));
+        if (vector.z < 0) {
+            var x = out.x;
+            var y = out.y;
+            out.x = (1.0 - Math.abs(y)) * signNotZero(x);
+            out.y = (1.0 - Math.abs(x)) * signNotZero(y);
+        }
+
+        out.x = (out.x * 0.5 + 0.5) * 255.0;
+        out.y = (out.y * 0.5 + 0.5) * 255.0;
+        out.x = Math.round(out.x);
+        out.y = Math.round(out.y);
+    };
+
     Vertex.prototype.getNormalX = function() {
         if (defined(this.index)) {
             return this.normalBuffer[this.index * 2];
         }
-        return Math.round(CesiumMath.lerp(this.first.getNormalX(), this.second.getNormalX(), this.ratio));
+
+        var normalLerpScratch = new Cartesian3();
+        var first = octDecode(this.first.getNormalX(), this.first.getNormalY());
+        var second = octDecode(this.second.getNormalX(), this.second.getNormalY());
+        normalLerpScratch = Cartesian3.lerp(first, second, this.ratio, normalLerpScratch);
+
+        var encodeResult = new Cartesian2();
+        octEncode(normalLerpScratch, encodeResult);
+
+        return encodeResult.x;
     };
 
     Vertex.prototype.getNormalY = function() {
         if (defined(this.index)) {
             return this.normalBuffer[this.index * 2 + 1];
         }
-        return Math.round(CesiumMath.lerp(this.first.getNormalY(), this.second.getNormalY(), this.ratio));
+        var normalLerpScratch = new Cartesian3();
+        var first = octDecode(this.first.getNormalX(), this.first.getNormalY());
+        var second = octDecode(this.second.getNormalX(), this.second.getNormalY());
+        normalLerpScratch = Cartesian3.lerp(first, second, this.ratio, normalLerpScratch);
+
+        var encodeResult = new Cartesian2();
+        octEncode(normalLerpScratch, encodeResult);
+
+        return encodeResult.y;
     };
 
     var polygonVertices = [];
