@@ -374,16 +374,15 @@ define([
         return CesiumMath.lerp(this.first.getV(), this.second.getV(), this.ratio);
     };
 
-    var signNotZero = function(v) {
+    function signNotZero(v) {
         return v < 0.0 ? -1.0 : 1.0;
-    };
+    }
 
-    var toSNorm = function(f)
-    {
+    function toSNorm(f) {
         return Math.round((f * 0.5 + 0.5) * 255.0);
-    };
+    }
 
-    var octDecode = function(x, y, result) {
+    function octDecode(x, y, result) {
         result.x = x / 255.0 * 2.0 - 1.0;
         result.y = y / 255.0 * 2.0 - 1.0;
         result.z = 1.0 - (Math.abs(result.x) + Math.abs(result.y));
@@ -396,9 +395,9 @@ define([
         }
 
         return Cartesian3.normalize(result, result);
-    };
+    }
 
-    var octEncode = function(vector, out) {
+    function octEncode(vector, out) {
         out.x = vector.x / (Math.abs(vector.x) + Math.abs(vector.y) + Math.abs(vector.z));
         out.y = vector.y / (Math.abs(vector.x) + Math.abs(vector.y) + Math.abs(vector.z));
         if (vector.z < 0) {
@@ -410,7 +409,7 @@ define([
 
         out.x = toSNorm(out.x);
         out.y = toSNorm(out.y);
-    };
+    }
 
     var encodedScratch = new Cartesian2();
     // An upsampled triangle may be clipped twice before it is assigned an index
@@ -418,7 +417,7 @@ define([
     var depth = -1;
     var cartesianScratch1 = [new Cartesian3(), new Cartesian3()];
     var cartesianScratch2 = [new Cartesian3(), new Cartesian3()];
-    var lerpOctEncodedNormal = function(vertex, result) {
+    function lerpOctEncodedNormal(vertex, result) {
         depth += 1;
 
         var first = cartesianScratch1[depth];
@@ -433,7 +432,7 @@ define([
         depth -= 1;
 
         return result;
-    };
+    }
 
     Vertex.prototype.getNormalX = function() {
         if (defined(this.index)) {
