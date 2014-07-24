@@ -441,7 +441,6 @@ define([
         }
 
         encodedScratch = lerpOctEncodedNormal(this, encodedScratch);
-
         return encodedScratch.x;
     };
 
@@ -451,7 +450,6 @@ define([
         }
 
         encodedScratch = lerpOctEncodedNormal(this, encodedScratch);
-
         return encodedScratch.y;
     };
 
