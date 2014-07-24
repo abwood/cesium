@@ -374,32 +374,27 @@ define([
         return CesiumMath.lerp(this.first.getV(), this.second.getV(), this.ratio);
     };
 
-    function toUInt(value) {
-        return (~~value) >>> 0;
-    }
-
     var signNotZero = function(v) {
         return v < 0.0 ? -1.0 : 1.0;
     };
 
     var toSNorm = function(f)
     {
-        return toUInt((f * 0.5 + 0.5) * 255.0);
+        return Math.round((f * 0.5 + 0.5) * 255.0);
     };
 
-    var octDecode = function(x, y) {
-        var vx = x / 255.0 * 2.0 - 1.0;
-        var vy = y / 255.0 * 2.0 - 1.0;
-        var vz = 1.0 - (Math.abs(vx) + Math.abs(vy));
+    var octDecode = function(x, y, result) {
+        result.x = x / 255.0 * 2.0 - 1.0;
+        result.y = y / 255.0 * 2.0 - 1.0;
+        result.z = 1.0 - (Math.abs(result.x) + Math.abs(result.y));
 
-        if (vz < 0.0)
+        if (result.z < 0.0)
         {
             var oldVX = x / 255.0 * 2.0 - 1.0;
-            vx = (1.0 - Math.abs(vy)) * signNotZero(oldVX);
-            vy = (1.0 - Math.abs(oldVX)) * signNotZero(vy);
+            result.x = (1.0 - Math.abs(result.y)) * signNotZero(oldVX);
+            result.y = (1.0 - Math.abs(oldVX)) * signNotZero(result.y);
         }
 
-        var result = new Cartesian3(vx, vy, vz);
         return Cartesian3.normalize(result, result);
     };
 
@@ -413,10 +408,31 @@ define([
             out.y = (1.0 - Math.abs(x)) * signNotZero(y);
         }
 
-        out.x = (out.x * 0.5 + 0.5) * 255.0;
-        out.y = (out.y * 0.5 + 0.5) * 255.0;
-        out.x = Math.round(out.x);
-        out.y = Math.round(out.y);
+        out.x = toSNorm(out.x);
+        out.y = toSNorm(out.y);
+    };
+
+    var encodedScratch = new Cartesian2();
+    // An upsampled triangle may be clipped twice before it is assigned an index
+    // In this case, we need a buffer to handle the recursion of getNormalX() and getNormalY().
+    var depth = -1;
+    var cartesianScratch1 = [new Cartesian3(), new Cartesian3()];
+    var cartesianScratch2 = [new Cartesian3(), new Cartesian3()];
+    var lerpOctEncodedNormal = function(vertex, result) {
+        depth += 1;
+
+        var first = cartesianScratch1[depth];
+        var second = cartesianScratch2[depth];
+
+        first = octDecode(vertex.first.getNormalX(), vertex.first.getNormalY(), first);
+        second = octDecode(vertex.second.getNormalX(), vertex.second.getNormalY(), second);
+        cartesian3Scratch = Cartesian3.lerp(first, second, vertex.ratio, cartesian3Scratch);
+
+        octEncode(cartesian3Scratch, result);
+
+        depth -= 1;
+
+        return result;
     };
 
     Vertex.prototype.getNormalX = function() {
@@ -424,30 +440,19 @@ define([
             return this.normalBuffer[this.index * 2];
         }
 
-        var normalLerpScratch = new Cartesian3();
-        var first = octDecode(this.first.getNormalX(), this.first.getNormalY());
-        var second = octDecode(this.second.getNormalX(), this.second.getNormalY());
-        normalLerpScratch = Cartesian3.lerp(first, second, this.ratio, normalLerpScratch);
+        encodedScratch = lerpOctEncodedNormal(this, encodedScratch);
 
-        var encodeResult = new Cartesian2();
-        octEncode(normalLerpScratch, encodeResult);
-
-        return encodeResult.x;
+        return encodedScratch.x;
     };
 
     Vertex.prototype.getNormalY = function() {
         if (defined(this.index)) {
             return this.normalBuffer[this.index * 2 + 1];
         }
-        var normalLerpScratch = new Cartesian3();
-        var first = octDecode(this.first.getNormalX(), this.first.getNormalY());
-        var second = octDecode(this.second.getNormalX(), this.second.getNormalY());
-        normalLerpScratch = Cartesian3.lerp(first, second, this.ratio, normalLerpScratch);
 
-        var encodeResult = new Cartesian2();
-        octEncode(normalLerpScratch, encodeResult);
+        encodedScratch = lerpOctEncodedNormal(this, encodedScratch);
 
-        return encodeResult.y;
+        return encodedScratch.y;
     };
 
     var polygonVertices = [];
