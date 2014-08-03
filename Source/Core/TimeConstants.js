@@ -1,13 +1,19 @@
 /*global define*/
-define(function() {
+define([
+        './freezeObject'
+    ], function(
+        freezeObject) {
     "use strict";
 
     /**
      * Constants for time conversions like those done by {@link JulianDate}.
      *
-     * @exports TimeConstants
+     * @namespace
+     * @alias TimeConstants
      *
      * @see JulianDate
+     *
+     * @private
      */
     var TimeConstants = {
         /**
@@ -79,10 +85,9 @@ define(function() {
          * on November 17, 1858.
          * @type {Number}
          * @constant
-         * @default
          */
         MODIFIED_JULIAN_DATE_DIFFERENCE : 2400000.5
     };
 
-    return TimeConstants;
+    return freezeObject(TimeConstants);
 });

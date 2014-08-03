@@ -39,16 +39,15 @@ define([
      *
      * @param {Element|String} container The DOM element or ID that will contain the widget.
      * @param {Scene} scene The Scene instance to use.
-     * @param {Number} [duration] The time, in milliseconds, it takes for the scene to transition.
+     * @param {Number} [duration=2.0] The time, in seconds, it takes for the scene to transition.
      *
      * @exception {DeveloperError} Element with id "container" does not exist in the document.
      *
      * @example
      * // In HTML head, include a link to the SceneModePicker.css stylesheet,
-     * // and in the body, include: &lt;div id="sceneModePickerContainer"&gt;&lt;/div&gt;
-     * // Note: This code assumed you already have a Scene instance.
+     * // and in the body, include: <div id="sceneModePickerContainer"></div>
+     * // Note: This code assumes you already have a Scene instance.
      *
-     * var scene = viewer.scene;
      * var sceneModePicker = new Cesium.SceneModePicker('sceneModePickerContainer', scene);
      */
     var SceneModePicker = function(container, scene, duration) {
@@ -63,7 +62,7 @@ define([
 
         container = getElement(container);
 
-        var viewModel = new SceneModePickerViewModel(scene);
+        var viewModel = new SceneModePickerViewModel(scene, duration);
 
         viewModel._globePath = globePath;
         viewModel._flatMapPath = flatMapPath;
@@ -168,7 +167,6 @@ cesiumSvgPath: { path: _columbusViewPath, width: 64, height: 64 }');
     });
 
     /**
-     * @memberof SceneModePicker
      * @returns {Boolean} true if the object has been destroyed, false otherwise.
      */
     SceneModePicker.prototype.isDestroyed = function() {
@@ -178,7 +176,6 @@ cesiumSvgPath: { path: _columbusViewPath, width: 64, height: 64 }');
     /**
      * Destroys the widget.  Should be called if permanently
      * removing the widget from layout.
-     * @memberof SceneModePicker
      */
     SceneModePicker.prototype.destroy = function() {
         this._viewModel.destroy();

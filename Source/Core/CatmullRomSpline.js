@@ -37,12 +37,18 @@ define([
             var p1 = points[1];
 
             return function(time, result) {
+                if (!defined(result)){
+                    result = new Cartesian3();
+                }
                 var u = (time - t0) * invSpan;
                 return Cartesian3.lerp(p0, p1, u, result);
             };
         }
 
         return function(time, result) {
+            if (!defined(result)) {
+                result = new Cartesian3();
+            }
             var i = spline._lastTimeIndex = spline.findTimeInterval(time, spline._lastTimeIndex);
             var u = (time - times[i]) / (times[i + 1] - times[i]);
 
@@ -104,9 +110,10 @@ define([
      * @alias CatmullRomSpline
      * @constructor
      *
-     * @param {Array} options.times An array of strictly increasing, unit-less, floating-point times at each point.
+     * @param {Object} options Object with the following properties:
+     * @param {Number[]} options.times An array of strictly increasing, unit-less, floating-point times at each point.
      *                The values are in no way connected to the clock time. They are the parameterization for the curve.
-     * @param {Array} options.points The array of {@link Cartesian3} control points.
+     * @param {Cartesian3[]} options.points The array of {@link Cartesian3} control points.
      * @param {Cartesian3} [options.firstTangent] The tangent of the curve at the first control point.
      *                     If the tangent is not given, it will be estimated.
      * @param {Cartesian3} [options.lastTangent] The tangent of the curve at the last control point.
@@ -115,8 +122,6 @@ define([
      * @exception {DeveloperError} points.length must be greater than or equal to 2.
      * @exception {DeveloperError} times.length must be equal to points.length.
      *
-     * @see BSpline
-     * @see BezierSpline
      * @see HermiteSpline
      * @see LinearSpline
      * @see QuaternionSpline
@@ -191,7 +196,7 @@ define([
          *
          * @memberof CatmullRomSpline.prototype
          *
-         * @type {Array}
+         * @type {Number[]}
          * @readonly
          */
         times : {
@@ -205,7 +210,7 @@ define([
          *
          * @memberof CatmullRomSpline.prototype
          *
-         * @type {Array}
+         * @type {Cartesian3[]}
          * @readonly
          */
         points : {
@@ -255,7 +260,7 @@ define([
     /**
      * Finds an index <code>i</code> in <code>times</code> such that the parameter
      * <code>time</code> is in the interval <code>[times[i], times[i + 1]]</code>.
-     * @memberof CatmullRomSpline
+     * @function
      *
      * @param {Number} time The time.
      * @returns {Number} The index for the element at the start of the interval.
@@ -268,7 +273,6 @@ define([
 
     /**
      * Evaluates the curve at a given time.
-     * @memberof CatmullRomSpline
      *
      * @param {Number} time The time at which to evaluate the curve.
      * @param {Cartesian3} [result] The object onto which to store the result.

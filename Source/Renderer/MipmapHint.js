@@ -1,17 +1,17 @@
 /*global define*/
 define([
-        '../Core/Enumeration'
+        '../Core/freezeObject'
     ], function(
-        Enumeration) {
+        freezeObject) {
     "use strict";
 
     /**
      * @private
      */
     var MipmapHint = {
-        DONT_CARE : new Enumeration(0x1100, 'DONT_CARE'),
-        FASTEST : new Enumeration(0x1101, 'FASTEST'),
-        NICEST : new Enumeration(0x1102, 'NICEST'),
+        DONT_CARE : 0x1100,
+        FASTEST : 0x1101,
+        NICEST : 0x1102,
 
         validate : function(mipmapHint) {
             return ((mipmapHint === MipmapHint.DONT_CARE) ||
@@ -20,5 +20,5 @@ define([
         }
     };
 
-    return MipmapHint;
+    return freezeObject(MipmapHint);
 });

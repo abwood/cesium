@@ -1,17 +1,17 @@
 /*global define*/
 define([
-        '../Core/Enumeration'
+        '../Core/freezeObject'
     ], function(
-        Enumeration) {
+        freezeObject) {
     "use strict";
 
     /**
      * @private
      */
     var BufferUsage = {
-        STREAM_DRAW : new Enumeration(0x88E0, 'STREAM_DRAW'),
-        STATIC_DRAW : new Enumeration(0x88E4, 'STATIC_DRAW'),
-        DYNAMIC_DRAW : new Enumeration(0x88E8, 'DYNAMIC_DRAW'),
+        STREAM_DRAW : 0x88E0,
+        STATIC_DRAW : 0x88E4,
+        DYNAMIC_DRAW : 0x88E8,
 
         validate : function(bufferUsage) {
             return ((bufferUsage === BufferUsage.STREAM_DRAW) ||
@@ -20,5 +20,5 @@ define([
         }
     };
 
-    return BufferUsage;
+    return freezeObject(BufferUsage);
 });
