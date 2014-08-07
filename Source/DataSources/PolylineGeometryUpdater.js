@@ -425,6 +425,7 @@ define([
             primitives.add(polylineCollection);
         }
         this._line = polylineCollection.add();
+        this._line.id = geometryUpdater._entity;
         this._primitives = primitives;
         this._geometryUpdater = geometryUpdater;
         this._positions = [];
