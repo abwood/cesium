@@ -420,23 +420,17 @@ define([
         return new DynamicGeometryUpdater(primitives, this);
     };
 
+    var polylineCollection;
+
     /**
      * @private
      */
     var DynamicGeometryUpdater = function(primitives, geometryUpdater) {
-        var sceneId = geometryUpdater._scene.id;
-
-        var polylineCollection = polylineCollections[sceneId];
         if (!defined(polylineCollection)) {
             polylineCollection = new PolylineCollection();
-            polylineCollections[sceneId] = polylineCollection;
             primitives.add(polylineCollection);
         }
-
-        var line = polylineCollection.add();
-        line.id = geometryUpdater._entity;
-
-        this._line = line;
+        this._line = polylineCollection.add();
         this._primitives = primitives;
         this._geometryUpdater = geometryUpdater;
         this._positions = [];
@@ -478,16 +472,14 @@ define([
     };
 
     DynamicGeometryUpdater.prototype.destroy = function() {
-        var geometryUpdater = this._geometryUpdater;
-        var sceneId = geometryUpdater._scene.id;
-        var polylineCollection = polylineCollections[sceneId];
         polylineCollection.remove(this._line);
         if (polylineCollection.length === 0) {
             this._primitives.remove(polylineCollection);
             if (!polylineCollection.isDestroyed()) {
                 polylineCollection.destroy();
             }
-            delete polylineCollections[sceneId];
+
+            polylineCollection = undefined;
         }
         destroyObject(this);
     };
