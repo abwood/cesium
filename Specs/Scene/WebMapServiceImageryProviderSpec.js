@@ -511,7 +511,7 @@ defineSuite([
             runs(function() {
                 var asyncResult = provider.pickFeatures(0, 0, 0, 0.5, 0.5);
 
-                waitsForPromise(asyncResult, {}, function(pickResult) {
+                waitsForPromise(asyncResult, function(pickResult) {
                     expect(pickResult.length).toBe(1);
 
                     var firstResult = pickResult[0];
@@ -541,7 +541,7 @@ defineSuite([
             runs(function() {
                 var asyncResult = provider.pickFeatures(0, 0, 0, 0.5, 0.5);
 
-                waitsForPromise(asyncResult, {}, function(pickResult) {
+                waitsForPromise(asyncResult, function(pickResult) {
                     expect(pickResult.length).toBe(1);
 
                     var firstResult = pickResult[0];
@@ -570,7 +570,7 @@ defineSuite([
             runs(function() {
                 var asyncResult = provider.pickFeatures(0, 0, 0, 0.5, 0.5);
 
-                waitsForPromise(asyncResult, {}, function(pickResult) {
+                waitsForPromise(asyncResult, function(pickResult) {
                     expect(pickResult.length).toBe(1);
 
                     var firstResult = pickResult[0];
@@ -599,7 +599,7 @@ defineSuite([
             runs(function() {
                 var asyncResult = provider.pickFeatures(0, 0, 0, 0.5, 0.5);
 
-                waitsForPromise(asyncResult, {}, function(pickResult) {
+                waitsForPromise(asyncResult, function(pickResult) {
                     expect(pickResult.length).toBe(1);
 
                     var firstResult = pickResult[0];
@@ -628,7 +628,7 @@ defineSuite([
             runs(function() {
                 var asyncResult = provider.pickFeatures(0, 0, 0, 0.5, 0.5);
 
-                waitsForPromise(asyncResult, {}, function(pickResult) {
+                waitsForPromise(asyncResult, function(pickResult) {
                     expect(pickResult).toBeUndefined();
                 });
             });
@@ -687,7 +687,7 @@ defineSuite([
             runs(function() {
                 var asyncResult = provider.pickFeatures(0, 0, 0, 0.5, 0.5);
 
-                waitsForPromise(asyncResult, {}, function(pickResult) {
+                waitsForPromise(asyncResult, function(pickResult) {
                     expect(pickResult.length).toBe(1);
 
                     var firstResult = pickResult[0];
@@ -722,9 +722,7 @@ defineSuite([
 
             runs(function() {
                 var asyncResult = provider.pickFeatures(0, 0, 0, 0.5, 0.5);
-                waitsForPromise(asyncResult, {
-                    expectRejection : true
-                });
+                waitsForPromise.toReject(asyncResult);
             });
         });
     });
