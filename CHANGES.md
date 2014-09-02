@@ -1,6 +1,10 @@
 Change Log
 ==========
 
+### 1.2 - 2014-10-01
+
+* Fixed a bug in `Model` where the wrong animations could be used when the model was created from glTF JSON instead of 
+
 ### 1.01 - 2014-09-01
 
 * Added a new imagery provider, `WebMapTileServiceImageryProvider`, for accessing tiles on a WMTS 1.0.0 server.
@@ -13,10 +17,10 @@ Change Log
 * Fixed a bug that caused `SceneTransforms.wgs84ToWindowCoordinates` to incorrectly return `undefined` when in 2D.
 * Fixed a bug in `ImageryLayer` that caused layer images to be rendered twice for each terrain tile that existed prior to adding the imagery layer.
 * Fixed a bug in `Camera.pickEllipsoid` that caused it to return the back side of the ellipsoid when near the surface.
+a url to a glTF file.  [#2078](https://github.com/AnalyticalGraphicsInc/cesium/issues/2078)
 * Added `FeatureDetection.supportsWebWorkers`.
 * Added `id` property to `Scene` which is a readonly unique identifier associated with each instance.
 * `loadWithXhr` now works with older browsers, such as Internet Explorer 9.
-* Added wkid 102113 detection (equivilent to 102100) to ArcGis Imagery Provider.
 
 ### 1.0 - 2014-08-01
 
