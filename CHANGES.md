@@ -3,6 +3,7 @@ Change Log
 
 ### 1.2 - 2014-10-01
 
+* Added `Scene.enableOrderIndependentTranslucency` to toggle OIT at runtime.
 * Eliminated imagery artifacts at some zoom levels due to Mercator reprojection.
 * Added `TerrainProvider.getTileDataAvailable` to improve tile loading performance when camera starts near globe.
 
