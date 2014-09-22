@@ -8,6 +8,7 @@ Change Log
 * Added a constructor option to `Scene`, `CesiumWidget`, and `Viewer` to disable order independent translucency.
 * Eliminated imagery artifacts at some zoom levels due to Mercator reprojection.
 * Added `TerrainProvider.getTileDataAvailable` to improve tile loading performance when camera starts near globe.
+* Fixed orientation of models to be Z-up like everything else. To avoid problems some glTF models may need to be reconverted.
 
 ### 1.1 - 2014-09-02
 
