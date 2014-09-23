@@ -9,7 +9,8 @@ Change Log
 * Eliminated imagery artifacts at some zoom levels due to Mercator reprojection.
 * Added a constructor option to `Scene`, `CesiumWidget`, and `Viewer` to disable order independent translucency.
 * Added `TerrainProvider.getTileDataAvailable` to improve tile loading performance when camera starts near globe.
-
+* Added `Globe.showWaterEffect` to enable/disable the water effect for supported terrain providers.
+* 
 ### 1.1 - 2014-09-02
 
 * Added a new imagery provider, `WebMapTileServiceImageryProvider`, for accessing tiles on a WMTS 1.0.0 server.
