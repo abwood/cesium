@@ -6,6 +6,7 @@ Change Log
 * Deprecated
   * Types implementing the `TerrainProvider` interface should now include the new `getTileDataAvailable` function.  The function will be required starting in Cesium 1.4.
 * Fixed model orientations to follow the same Z-up convention used throughout Cesium. There was also an orientation issue fixed in the [online model converter](http://cesiumjs.org/convertmodel.html). If you are having orientation issues after updating, try reconverting your models.
+* Fixed a bug in `GeoJsonDataSource` which was causing polygons with height values to be drawn onto the surface.
 * Eliminated imagery artifacts at some zoom levels due to Mercator reprojection.
 * Added a constructor option to `Scene`, `CesiumWidget`, and `Viewer` to disable order independent translucency.
 * Added `TerrainProvider.getTileDataAvailable` to improve tile loading performance when camera starts near globe.
