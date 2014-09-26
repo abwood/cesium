@@ -12,6 +12,7 @@ Change Log
 * Added `TerrainProvider.getTileDataAvailable` to improve tile loading performance when camera starts near globe.
 * Added `Globe.showWaterEffect` to enable/disable the water effect for supported terrain providers.
 * Added `Globe.baseColor` to set the color of the globe when no imagery is available.
+* Fixed a bug that could crash a crash when quickly adding and removing imagery layers.
 
 ### 1.1 - 2014-09-02
 
