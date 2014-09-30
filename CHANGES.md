@@ -7,12 +7,16 @@ Change Log
   * Types implementing the `TerrainProvider` interface should now include the new `getTileDataAvailable` function.  The function will be required starting in Cesium 1.4.
 * Fixed model orientations to follow the same Z-up convention used throughout Cesium. There was also an orientation issue fixed in the [online model converter](http://cesiumjs.org/convertmodel.html). If you are having orientation issues after updating, try reconverting your models.
 * Fixed a bug in `GeoJsonDataSource` which was causing polygons with height values to be drawn onto the surface.
+* Fixed a bug that could cause a crash when quickly adding and removing imagery layers.
 * Eliminated imagery artifacts at some zoom levels due to Mercator reprojection.
+* Added support for the GeoJSON [simplestyle specification](https://github.com/mapbox/simplestyle-spec). [Sandcastle example](http://cesiumjs.org/Cesium/Apps/Sandcastle/index.html?src=GeoJSON%20simplestyle.html);
+* Added `PinBuilder` class for easy creation of map pins. [Sandcastle example](http://cesiumjs.org/Cesium/Apps/Sandcastle/index.html?src=PinBuilder.html);
+* Added `Color.brighten` and `Color.darken` to make it easy to brighten or darker a color instance.
 * Added a constructor option to `Scene`, `CesiumWidget`, and `Viewer` to disable order independent translucency.
 * Added `TerrainProvider.getTileDataAvailable` to improve tile loading performance when camera starts near globe.
 * Added `Globe.showWaterEffect` to enable/disable the water effect for supported terrain providers.
 * Added `Globe.baseColor` to set the color of the globe when no imagery is available.
-* Fixed a bug that could crash a crash when quickly adding and removing imagery layers.
+* Cesium now ships with a version of the [maki icon set](https://www.mapbox.com/maki/) for use with `PinBuilder` and GeoJSON simplestyle support.
 
 ### 1.1 - 2014-09-02
 
