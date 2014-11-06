@@ -3,6 +3,7 @@ defineSuite([
         'Scene/GlobeSurfaceTileProvider',
         'Core/Cartesian3',
         'Core/CesiumTerrainProvider',
+        'Core/Color',
         'Core/Credit',
         'Core/defined',
         'Core/Ellipsoid',
@@ -29,6 +30,7 @@ defineSuite([
         GlobeSurfaceTileProvider,
         Cartesian3,
         CesiumTerrainProvider,
+        Color,
         Credit,
         defined,
         Ellipsoid,
@@ -160,7 +162,9 @@ defineSuite([
             var layerCollection = globe.imageryLayers;
 
             layerCollection.removeAll();
-            var layer = layerCollection.addImageryProvider(new SingleTileImageryProvider({url : 'Data/Images/Red16x16.png'}));
+            var layer = layerCollection.addImageryProvider(new SingleTileImageryProvider({
+                url : 'Data/Images/Red16x16.png'
+            }));
 
             updateUntilDone(globe);
 
@@ -186,7 +190,9 @@ defineSuite([
             var layerCollection = globe.imageryLayers;
 
             layerCollection.removeAll();
-            layerCollection.addImageryProvider(new SingleTileImageryProvider({url : 'Data/Images/Red16x16.png'}));
+            layerCollection.addImageryProvider(new SingleTileImageryProvider({
+                url : 'Data/Images/Red16x16.png'
+            }));
 
             updateUntilDone(globe);
 
@@ -194,7 +200,9 @@ defineSuite([
 
             runs(function() {
                 // Add another layer
-                layer2 = layerCollection.addImageryProvider(new SingleTileImageryProvider({url : 'Data/Images/Green4x4.png'}));
+                layer2 = layerCollection.addImageryProvider(new SingleTileImageryProvider({
+                    url : 'Data/Images/Green4x4.png'
+                }));
             });
 
             updateUntilDone(globe);
@@ -222,8 +230,12 @@ defineSuite([
             var layerCollection = globe.imageryLayers;
 
             layerCollection.removeAll();
-            var layer1 = layerCollection.addImageryProvider(new SingleTileImageryProvider({url : 'Data/Images/Red16x16.png'}));
-            var layer2 = layerCollection.addImageryProvider(new SingleTileImageryProvider({url : 'Data/Images/Green4x4.png'}));
+            var layer1 = layerCollection.addImageryProvider(new SingleTileImageryProvider({
+                url : 'Data/Images/Red16x16.png'
+            }));
+            var layer2 = layerCollection.addImageryProvider(new SingleTileImageryProvider({
+                url : 'Data/Images/Green4x4.png'
+            }));
 
             updateUntilDone(globe);
 
@@ -271,12 +283,54 @@ defineSuite([
                 });
             });
         });
+
+        it('adding a layer creates its skeletons only once', function() {
+            var layerCollection = globe.imageryLayers;
+
+            layerCollection.removeAll();
+            layerCollection.addImageryProvider(new SingleTileImageryProvider({
+                url : 'Data/Images/Red16x16.png'
+            }));
+
+            updateUntilDone(globe);
+
+            var layer2;
+
+            runs(function() {
+                // Add another layer
+                layer2 = layerCollection.addImageryProvider(new SingleTileImageryProvider({
+                    url : 'Data/Images/Green4x4.png'
+                }));
+            });
+
+            updateUntilDone(globe);
+
+            runs(function() {
+                // All tiles should have one or more associated images.
+                forEachRenderedTile(surface, 1, undefined, function(tile) {
+                    expect(tile.data.imagery.length).toBeGreaterThan(0);
+                    var tilesFromLayer2 = 0;
+                    for (var i = 0; i < tile.data.imagery.length; ++i) {
+                        var imageryTile = tile.data.imagery[i].readyImagery;
+                        if (!defined(imageryTile)) {
+                            imageryTile = tile.data.imagery[i].loadingImagery;
+                        }
+                        if (imageryTile.imageryLayer === layer2) {
+                            ++tilesFromLayer2;
+                        }
+                    }
+                    expect(tilesFromLayer2).toBe(1);
+                });
+            });
+        });
     }, 'WebGL');
 
     it('renders in 2D geographic', function() {
         var layerCollection = globe.imageryLayers;
         layerCollection.removeAll();
-        layerCollection.addImageryProvider(new SingleTileImageryProvider({url : 'Data/Images/Red16x16.png'}));
+        layerCollection.addImageryProvider(new SingleTileImageryProvider({
+            url : 'Data/Images/Red16x16.png'
+        }));
 
         switchTo2D();
         frameState.mapProjection = new GeographicProjection(Ellipsoid.WGS84);
@@ -291,7 +345,9 @@ defineSuite([
     it('renders in 2D web mercator', function() {
         var layerCollection = globe.imageryLayers;
         layerCollection.removeAll();
-        layerCollection.addImageryProvider(new SingleTileImageryProvider({url : 'Data/Images/Red16x16.png'}));
+        layerCollection.addImageryProvider(new SingleTileImageryProvider({
+            url : 'Data/Images/Red16x16.png'
+        }));
 
         switchTo2D();
         frameState.mapProjection = new WebMercatorProjection(Ellipsoid.WGS84);
@@ -306,7 +362,9 @@ defineSuite([
     it('renders in Columbus View geographic', function() {
         var layerCollection = globe.imageryLayers;
         layerCollection.removeAll();
-        layerCollection.addImageryProvider(new SingleTileImageryProvider({url : 'Data/Images/Red16x16.png'}));
+        layerCollection.addImageryProvider(new SingleTileImageryProvider({
+            url : 'Data/Images/Red16x16.png'
+        }));
 
         frameState.camera.update(SceneMode.COLUMBUS_VIEW);
         frameState.camera.viewRectangle(new Rectangle(0.0001, 0.0001, 0.0030, 0.0030), Ellipsoid.WGS84);
@@ -321,7 +379,9 @@ defineSuite([
     it('renders in Columbus View web mercator', function() {
         var layerCollection = globe.imageryLayers;
         layerCollection.removeAll();
-        layerCollection.addImageryProvider(new SingleTileImageryProvider({url : 'Data/Images/Red16x16.png'}));
+        layerCollection.addImageryProvider(new SingleTileImageryProvider({
+            url : 'Data/Images/Red16x16.png'
+        }));
 
         frameState.camera.update(SceneMode.COLUMBUS_VIEW);
         frameState.camera.viewRectangle(new Rectangle(0.0001, 0.0001, 0.0030, 0.0030), Ellipsoid.WGS84);
@@ -336,7 +396,9 @@ defineSuite([
     it('renders in 3D', function() {
         var layerCollection = globe.imageryLayers;
         layerCollection.removeAll();
-        layerCollection.addImageryProvider(new SingleTileImageryProvider({url : 'Data/Images/Red16x16.png'}));
+        layerCollection.addImageryProvider(new SingleTileImageryProvider({
+            url : 'Data/Images/Red16x16.png'
+        }));
 
         frameState.camera.viewRectangle(new Rectangle(0.0001, 0.0001, 0.0025, 0.0025), Ellipsoid.WGS84);
 
@@ -347,10 +409,26 @@ defineSuite([
         });
     });
 
+    it('can change baseColor', function() {
+        var layerCollection = globe.imageryLayers;
+        layerCollection.removeAll();
+        globe.baseColor = Color.RED;
+        frameState.camera.viewRectangle(new Rectangle(0.0001, 0.0001, 0.0025, 0.0025), Ellipsoid.WGS84);
+
+        updateUntilDone(globe);
+
+        runs(function() {
+            expect(render(context, frameState, globe)).toBeGreaterThan(0);
+            expect(context.readPixels()).toEqual([255, 0, 0, 255]);
+        });
+    });
+
     it('renders in 3D and then Columbus View', function() {
         var layerCollection = globe.imageryLayers;
         layerCollection.removeAll();
-        layerCollection.addImageryProvider(new SingleTileImageryProvider({url : 'Data/Images/Red16x16.png'}));
+        layerCollection.addImageryProvider(new SingleTileImageryProvider({
+            url : 'Data/Images/Red16x16.png'
+        }));
 
         frameState.camera.viewRectangle(new Rectangle(0.0001, 0.0001, 0.0025, 0.0025), Ellipsoid.WGS84);
 
@@ -393,7 +471,9 @@ defineSuite([
     it('passes layer adjustment values as uniforms', function() {
         var layerCollection = globe.imageryLayers;
         layerCollection.removeAll();
-        var layer = layerCollection.addImageryProvider(new SingleTileImageryProvider({url : 'Data/Images/Red16x16.png'}));
+        var layer = layerCollection.addImageryProvider(new SingleTileImageryProvider({
+            url : 'Data/Images/Red16x16.png'
+        }));
 
         layer.alpha = 0.123;
         layer.brightness = 0.456;
@@ -425,7 +505,7 @@ defineSuite([
                 expect(uniforms.u_dayTextureAlpha()).toEqual([0.123]);
                 expect(uniforms.u_dayTextureBrightness()).toEqual([0.456]);
                 expect(uniforms.u_dayTextureContrast()).toEqual([0.654]);
-                expect(uniforms.u_dayTextureOneOverGamma()).toEqual([1.0/0.321]);
+                expect(uniforms.u_dayTextureOneOverGamma()).toEqual([1.0 / 0.321]);
                 expect(uniforms.u_dayTextureSaturation()).toEqual([0.123]);
                 expect(uniforms.u_dayTextureHue()).toEqual([0.456]);
             }
@@ -437,7 +517,9 @@ defineSuite([
     it('skips layer with uniform alpha value of zero', function() {
         var layerCollection = globe.imageryLayers;
         layerCollection.removeAll();
-        var layer = layerCollection.addImageryProvider(new SingleTileImageryProvider({url : 'Data/Images/Red16x16.png'}));
+        var layer = layerCollection.addImageryProvider(new SingleTileImageryProvider({
+            url : 'Data/Images/Red16x16.png'
+        }));
 
         layer.alpha = 0.0;
 
@@ -473,7 +555,9 @@ defineSuite([
         layerCollection.removeAll();
 
         for (var i = 0; i < context.maximumTextureImageUnits + 1; ++i) {
-            layerCollection.addImageryProvider(new SingleTileImageryProvider({url : 'Data/Images/Red16x16.png'}));
+            layerCollection.addImageryProvider(new SingleTileImageryProvider({
+                url : 'Data/Images/Red16x16.png'
+            }));
         }
 
         frameState.camera.viewRectangle(new Rectangle(0.0001, 0.0001, 0.0025, 0.0025), Ellipsoid.WGS84);
@@ -512,7 +596,7 @@ defineSuite([
             }
 
             var tileCount = 0;
-            for (var tileID in drawCommandsPerTile) {
+            for ( var tileID in drawCommandsPerTile) {
                 if (drawCommandsPerTile.hasOwnProperty(tileID)) {
                     ++tileCount;
                     expect(drawCommandsPerTile[tileID]).toBeGreaterThanOrEqualTo(2);
@@ -636,4 +720,11 @@ defineSuite([
             });
         });
     });
+
+    it('throws if baseColor is assigned undefined', function() {
+        expect(function() {
+            surface.tileProvider.baseColor = undefined;
+        }).toThrowDeveloperError();
+    });
+
 }, 'WebGL');

@@ -79,7 +79,7 @@ define([
         this._style = defaultValue(options.style, LabelStyle.FILL);
         this._verticalOrigin = defaultValue(options.verticalOrigin, VerticalOrigin.BOTTOM);
         this._horizontalOrigin = defaultValue(options.horizontalOrigin, HorizontalOrigin.LEFT);
-        this._pixelOffset = Cartesian2.clone(defaultValue(options.pixelOffset, Cartesian2.ZERO), new Cartesian2());
+        this._pixelOffset = Cartesian2.clone(defaultValue(options.pixelOffset, Cartesian2.ZERO));
         this._eyeOffset = Cartesian3.clone(defaultValue(options.eyeOffset, Cartesian3.ZERO));
         this._position = Cartesian3.clone(defaultValue(options.position, Cartesian3.ZERO));
         this._scale = defaultValue(options.scale, 1.0);
@@ -441,7 +441,7 @@ define([
         },
 
         /**
-         * Gest and sets the 3D Cartesian offset applied to this label in eye coordinates.  Eye coordinates is a left-handed
+         * Gets and sets the 3D Cartesian offset applied to this label in eye coordinates.  Eye coordinates is a left-handed
          * coordinate system, where <code>x</code> points towards the viewer's right, <code>y</code> points up, and
          * <code>z</code> points into the screen.  Eye coordinates use the same scale as world and model coordinates,
          * which is typically meters.

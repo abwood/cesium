@@ -5,7 +5,6 @@ defineSuite([
         'Core/BoundingSphere',
         'Core/Cartesian2',
         'Core/Cartesian3',
-        'Core/Cartographic',
         'Core/Color',
         'Core/Math',
         'Core/NearFarScalar',
@@ -27,7 +26,6 @@ defineSuite([
         BoundingSphere,
         Cartesian2,
         Cartesian3,
-        Cartographic,
         Color,
         CesiumMath,
         NearFarScalar,
@@ -415,7 +413,6 @@ defineSuite([
             b.translucencyByDistance = translucency;
         }).toThrowDeveloperError();
     });
-
 
     it('set a removed billboard property', function() {
         var b = billboards.add();
@@ -934,7 +931,7 @@ defineSuite([
         expect(context.readPixels()).toEqual([0, 255, 0, 255]);
     });
 
-    it('renders using billboard custum width property', function() {
+    it('renders using billboard custom width property', function() {
         var b = billboards.add({
             position : Cartesian3.ZERO,
             image : greenImage
@@ -954,7 +951,7 @@ defineSuite([
         expect(context.readPixels()).toEqual([0, 255, 0, 255]);
     });
 
-    it('renders using billboard custum height property', function() {
+    it('renders using billboard custom height property', function() {
         var b = billboards.add({
             position : Cartesian3.ZERO,
             image : greenImage
@@ -1242,11 +1239,11 @@ defineSuite([
 
         var one = billboards.add({
             image : greenImage,
-            position : ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-50.0, -50.0, 0.0))
+            position : Cartesian3.fromDegrees(-50.0, -50.0)
         });
         var two = billboards.add({
             image : greenImage,
-            position : ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-50.0, 50.0, 0.0))
+            position : Cartesian3.fromDegrees(-50.0, 50.0)
         });
 
         var commandList = [];
@@ -1265,11 +1262,11 @@ defineSuite([
 
         var one = billboards.add({
             image : greenImage,
-            position : ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-50.0, -50.0, 0.0))
+            position : Cartesian3.fromDegrees(-50.0, -50.0)
         });
         var two = billboards.add({
             image : greenImage,
-            position : ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-50.0, 50.0, 0.0))
+            position : Cartesian3.fromDegrees(-50.0, 50.0)
         });
 
         var mode = frameState.mode;
@@ -1295,11 +1292,11 @@ defineSuite([
 
         var one = billboards.add({
             image : greenImage,
-            position : ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-50.0, -50.0, 0.0))
+            position : Cartesian3.fromDegrees(-50.0, -50.0)
         });
         var two = billboards.add({
             image : greenImage,
-            position : ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-50.0, 50.0, 0.0))
+            position : Cartesian3.fromDegrees(-50.0, 50.0)
         });
 
         var maxRadii = ellipsoid.maximumRadius;
@@ -1340,12 +1337,12 @@ defineSuite([
 
         var one = billboards.add({
             image : greenImage,
-            position : ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-50.0, -50.0, 0.0)),
+            position : Cartesian3.fromDegrees(-50.0, -50.0),
             pixelOffset : new Cartesian2(0.0, 200.0)
         });
         var two = billboards.add({
             image : greenImage,
-            position : ellipsoid.cartographicToCartesian(Cartographic.fromDegrees(-50.0, 50.0, 0.0)),
+            position : Cartesian3.fromDegrees(-50.0, 50.0),
             pixelOffset : new Cartesian2(0.0, 200.0)
         });
 
@@ -1388,6 +1385,37 @@ defineSuite([
 
             render(context, frameState, billboards);
             expect(context.readPixels()).toEqual([0, 255, 0, 255]);
+        });
+    });
+
+    it('sets billboard width and height based on loaded image width and height', function() {
+        render(context, frameState, billboards);
+
+        var one = billboards.add({
+            image : './Data/Images/Green1x4.png'
+        });
+
+        expect(one.width).toBeUndefined();
+        expect(one.height).toBeUndefined();
+
+        waitsFor(function() {
+            return one.ready;
+        });
+
+        runs(function() {
+            expect(one.width).toEqual(1);
+            expect(one.height).toEqual(4);
+
+            one.image = './Data/Images/Blue10x10.png';
+        });
+
+        waitsFor(function() {
+            return one.ready;
+        });
+
+        runs(function() {
+            expect(one.width).toEqual(10);
+            expect(one.height).toEqual(10);
         });
     });
 
@@ -1528,6 +1556,27 @@ defineSuite([
         });
     });
 
+    it('sets billboard width and height based on subregion width and height', function() {
+        render(context, frameState, billboards);
+
+        var one = billboards.add({
+            image : './Data/Images/Red16x16.png',
+            imageSubRegion : new BoundingRectangle(0.0, 0.0, 1.0, 2.0)
+        });
+
+        expect(one.width).toBeUndefined();
+        expect(one.height).toBeUndefined();
+
+        waitsFor(function() {
+            return one.ready;
+        });
+
+        runs(function() {
+            expect(one.width).toEqual(1);
+            expect(one.height).toEqual(2);
+        });
+    });
+
     it('can change image while an image is loading', function() {
         render(context, frameState, billboards);
 
@@ -1618,5 +1667,4 @@ defineSuite([
             });
         }
     });
-
 }, 'WebGL');
