@@ -9,6 +9,7 @@ define([
         './defaultValue',
         './defined',
         './defineProperties',
+        './deprecationWarning',
         './DeveloperError',
         './Event',
         './GeographicTilingScheme',
@@ -31,6 +32,7 @@ define([
         defaultValue,
         defined,
         defineProperties,
+        deprecationWarning,
         DeveloperError,
         Event,
         GeographicTilingScheme,
@@ -94,6 +96,10 @@ define([
         //>>includeEnd('debug');
 
         this._url = appendForwardSlash(options.url);
+        if (this._url.search('cesiumjs.org.*/smallterrain') !== -1) {
+            deprecationWarning('smallTerrain', 'cesiumjs.org/smallterrain tileset was deprecated in Cesium 1.7. It will be removed in Cesium 1.13. This tileset is superseded by the STK World Terrain tileset, available at http://cesiumjs.org/data-and-assets/terrain/stk-world-terrain.html');
+        }
+
         this._proxy = options.proxy;
 
         this._tilingScheme = new GeographicTilingScheme({
